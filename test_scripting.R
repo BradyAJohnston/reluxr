@@ -35,6 +35,18 @@ well_to_let <- function(x) {
   stringr::str_extract(x, "^\\w")
 }
 
+well_dis <- function (row, col, blank_row = 5, blank_col = 5) {
+  sqrt((row - blank_row) ^ 2 + (col - blank_col) ^ 2)
+}
+
+predict_background <- function(dis,
+                               height = 3,
+                               well_spacing = 25) {
+  (height ^ 3) / (
+    height ^ 2 + (dis * well_spacing) ^ 2
+  ) ^ (3/2)
+}
+
 well_plot <- function(data, row, col, fill, log10_fill = TRUE) {
   plt <- data %>%
   ggplot(aes({{ col }}, {{ row }}))
@@ -139,51 +151,148 @@ df_lum <-
 
 # translate to the middle of a grid, selecting cycle_nr 100
 translated_df <- df_lum %>%
-  filter(cycle_nr == 100) %>%
-  select(well, lum) %>%
-  left_join(
-    y = df_od %>%
-      filter(cycle_nr == 100) %>%
-      select(well, od)
-  ) %>%
+  # filter(cycle_nr == 100) %>%
+  select(cycle_nr, well, lum) %>%
+  # left_join(
+  #   y = df_od %>%
+  #     # filter(cycle_nr == 100) %>%
+  #     select(well, od)
+  # ) %>%
   mutate(
     row = let_to_num(well_to_let(well)) + 3,
     col = well_to_num(well) + 7,
     well = join_well(LETTERS[row], col)
   )
 
-#
+df_mean_sd <- translated_df %>%
+  group_by(col, row, well) %>%
+    summarise(mean = mean(lum, na.rm = TRUE),
+              sd = sd(lum, na.rm = TRUE)) %>%
+    ungroup() %>%
+    mutate(mean.norm = mean / max(mean))
+
+
+
+
 df <- expand.grid(col = 1:23, row = 1:15) %>%
   mutate(well = join_well(row, col)) %>%
   as_tibble() %>%
-  left_join(translated_df)
+  left_join(df_mean_sd)
 
 df %>%
-  well_plot(row, col, lum) +
+  well_plot(row, col, mean) +
   overlay_plate() +
   labs(title = "Original plate in new layout")
 
 
 # Create Averaged Values --------------------------------------------------
-
 df <- df %>%
   mutate(
-    dis = sqrt((row - 8)^ 2 + (col - 12) ^ 2)
-  ) %>%
+    dis = well_dis(row, col, blank_row = 8, blank_col = 12)
+  )
+
+df_mean <- df %>%
   group_by(dis) %>%
-  summarise(well, row, col, lum, od,
-            lum_av = mean(lum, na.rm = TRUE),
-            od_av = mean(od, na.rm = TRUE)) %>%
+  summarise(well, row, col, mean, sd,
+            mean_av = mean(mean, na.rm = TRUE),
+            sd_av = mean(sd, na.rm = TRUE)) %>%
   ungroup() %>%
   mutate(
-    lum = if_else(is.na(lum), lum_av, lum),
-    od = if_else(is.na(od), od_av, od)
+    mean = if_else(is.na(mean), mean_av, mean),
+    sd = if_else(is.na(sd), sd_av, sd)
+  )
+
+df_mean %>%
+  well_plot(row, col, mean)
+
+
+bg_lum <- df_lum  %>%
+  filter(col == 12) %>%
+  summarise(mean = mean(lum, na.rm = TRUE),
+            sd = sd(lum, na.rm = TRUE))
+
+
+df_filled <- df_mean %>%
+  mutate(
+    mean = case_when(
+      is.na(mean) ~ bg_lum$mean,
+      mean <= 0 ~ bg_lum$mean,
+      TRUE ~ mean
+    ),
+    sd = case_when(
+      is.na(sd) ~ bg_lum$sd,
+      sd <= 0 ~ bg_lum$sd,
+      TRUE ~ sd
+    )
+  )
+
+df_filled <- df_filled %>%
+  mutate(
+    rand = rnorm(nrow(.), mean = 0, sd = 1)
   )
 
 
-df %>%
-  mutate(lum = if_else(is.na(lum), 1e5, lum)) %>%
-  well_plot(row, col, lum) +
+df_filled %>%
+  well_plot(row, col, mean, log10_fill = TRUE) +
   labs(title = "Calibration plate with average values") +
   overlay_plate()
 
+# Decon matrix ------------------------------------------------------------
+
+matrix_from_tibble <- function(data, value) {
+  data %>%
+    select(row, col , {{ value }}) %>%
+    arrange(row, col) %>%
+    pivot_wider(values_from = {{ value }}, names_from = col) %>%
+    column_to_rownames("row") %>%
+    as.matrix()
+}
+
+
+matrix_mean <- df_filled %>%
+  matrix_from_tibble(mean)
+
+matrix_sd <- df_filled %>%
+  matrix_from_tibble(sd)
+
+matrix_rand <- df_filled %>%
+  matrix_from_tibble(rand)
+
+
+matrix_e <- matrix_mean + matrix_sd * matrix_rand
+
+toe
+
+
+portes::ToeplitzBlock(cbind(rnorm(100), rnorm(100)), 4)
+
+cbind(rnorm(100), rnorm(100))
+
+
+# matrix E{8,12}
+
+make_toe <- function(mat, )
+
+toeplitz(matrix_e[1, 1:11])
+
+
+
+
+# Prediction of Values ----------------------------------------------------
+
+df_lum %>%
+  filter(
+    cycle_nr == 50
+  ) %>%
+  mutate(
+    dis = well_dis(row, col),
+    pred_back = predict_background(dis)
+  ) %>%
+  ggplot(aes(dis)) +
+  geom_point(aes(y = lum / max(lum))) +
+  geom_smooth(aes(y = pred_back), se = FALSE, colour = "tomato") +
+  scale_y_log10() +
+  theme_linedraw() +
+  theme(
+    panel.grid.minor = element_blank()
+  )
