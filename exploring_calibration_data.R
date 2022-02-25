@@ -115,12 +115,18 @@ distance %>%
         ((col %in% c(1:7, 17:23)) &
            (row.num %in% 1:3 | row.num %in% 12:15))),
       lum,
-      1e5
+      1
     )
   ) %>%
   ggplot(aes(col, row, fill = log10(lum))) +
-  geom_tile() +
-  theme(aspect.ratio = 15 / 23) +
-  scale_fill_viridis_c()
+  geom_tile(alpha = 0.9, colour = "black") +
+  scale_fill_viridis_c() +
+  scale_x_continuous(breaks = 1:23, expand = expansion()) +
+  scale_y_discrete(expand = expansion()) +
+  theme_linedraw() +
+  theme(
+    panel.grid = element_blank(),
+    aspect.ratio = 15 / 23
+    )
 
 
