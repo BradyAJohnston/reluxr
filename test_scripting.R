@@ -148,26 +148,61 @@ df_lum <-
   )
 
 
+vec_lum <- df_lum %>%
+  filter(cycle_nr == 120) %>%
+  select(row, col, lum) %>%
+  arrange(row, col) %>%
+  pull(lum)
+
+
+# Prediction of Values ----------------------------------------------------
+
+df_lum %>%
+  filter(
+    cycle_nr == 50
+  ) %>%
+  mutate(
+    dis = well_dis(row, col),
+    pred_back = predict_background(dis)
+  ) %>%
+  ggplot(aes(dis)) +
+  geom_point(aes(y = lum / max(lum))) +
+  geom_smooth(aes(y = pred_back), se = FALSE, colour = "tomato") +
+  scale_y_log10() +
+  theme_linedraw() +
+  theme(
+    panel.grid.minor = element_blank()
+  )
+
+
+
+####################
+df_lum <- df_lum %>%
+  group_by(cycle_nr) %>%
+  mutate(
+    raw_lum = lum,
+    lum = lum / max(lum)
+    ) %>%
+  ungroup()
+#################
 
 # translate to the middle of a grid, selecting cycle_nr 100
 translated_df <- df_lum %>%
-  # filter(cycle_nr == 100) %>%
   select(cycle_nr, well, lum) %>%
-  # left_join(
-  #   y = df_od %>%
-  #     # filter(cycle_nr == 100) %>%
-  #     select(well, od)
-  # ) %>%
   mutate(
     row = let_to_num(well_to_let(well)) + 3,
     col = well_to_num(well) + 7,
     well = join_well(LETTERS[row], col)
   )
 
+
+
 df_mean_sd <- translated_df %>%
   group_by(col, row, well) %>%
-    summarise(mean = mean(lum, na.rm = TRUE),
-              sd = sd(lum, na.rm = TRUE)) %>%
+    summarise(
+      mean = mean(lum, na.rm = TRUE),
+      sd = sd(lum, na.rm = TRUE)
+      ) %>%
     ungroup() %>%
     mutate(mean.norm = mean / max(mean))
 
@@ -202,14 +237,15 @@ df_mean <- df %>%
     sd = if_else(is.na(sd), sd_av, sd)
   )
 
-df_mean %>%
-  well_plot(row, col, mean)
 
 
 bg_lum <- df_lum  %>%
   filter(col == 12) %>%
   summarise(mean = mean(lum, na.rm = TRUE),
             sd = sd(lum, na.rm = TRUE))
+
+instrument_sensitivity <- bg_lum$sd * 3
+
 
 
 df_filled <- df_mean %>%
@@ -233,7 +269,7 @@ df_filled <- df_filled %>%
 
 
 df_filled %>%
-  well_plot(row, col, mean, log10_fill = TRUE) +
+  well_plot(row, col, mean, log10_fill = FALSE) +
   labs(title = "Calibration plate with average values") +
   overlay_plate()
 
@@ -248,9 +284,20 @@ matrix_from_tibble <- function(data, value) {
     as.matrix()
 }
 
+tibble_from_vec <- function(vec) {
+  vec %>%
+    as_tibble() %>%
+    mutate(
+      col = rep(1:12, 8),
+      row = rep(1:8, each = 12)
+    )
+}
+
 
 matrix_mean <- df_filled %>%
   matrix_from_tibble(mean)
+
+
 
 matrix_sd <- df_filled %>%
   matrix_from_tibble(sd)
@@ -259,40 +306,107 @@ matrix_rand <- df_filled %>%
   matrix_from_tibble(rand)
 
 
-matrix_e <- matrix_mean + matrix_sd * matrix_rand
-
-toe
-
-
-portes::ToeplitzBlock(cbind(rnorm(100), rnorm(100)), 4)
-
-cbind(rnorm(100), rnorm(100))
-
-
-# matrix E{8,12}
-
-make_toe <- function(mat, )
-
-toeplitz(matrix_e[1, 1:11])
+matrix_e <- matrix_mean + matrix_rand * matrix_sd
 
 
 
+decon_col <- function(mat, rows, col = 12) {
+  lapply(rows, function(x) {
+    mat[x, seq(col, col + 11)] %>%
+      toeplitz()
+  }) %>%
+    do.call(rbind, .)
+}
 
-# Prediction of Values ----------------------------------------------------
+decon_col(matrix_e, 8:15) %>%
+  as_tibble()
+
+
+
+matrix_D <- lapply(8:1, function(x) {
+  decon_col(matrix_e, rows = seq(x, x + 7))
+}) %>%
+  do.call(cbind, .)
+
+
+make_decon_matrix <- function(mat, sample_row = 8, sample_col = 12) {
+  lapply(seq(sample_row, 1), function(x) {
+    decon_col(mat, rows = seq(x, x + max(sample_row) - 1))
+  }) %>%
+    do.call(cbind, .)
+}
+
+
+
+
+df_adjusted <- solve(make_decon_matrix(matrix_e)) %*% vec_lum %>%
+  as_tibble() %>%
+  mutate(
+    col = rep(c(1:12), length.out = 96),
+    row = rep(1:8, each = 12)
+    )
+
+
+df_adjusted %>%
+
+  well_plot(row, col, V1, log10_fill = FALSE) +
+  geom_text(aes(label = round(V1, 3)), colour = "black")
+
+
+compared_df <- df_adjusted %>%
+  filter(row != 8 && col != 12) %>%
+  mutate(
+    diff_below_zero = V1 - instrument_sensitivity <= 0
+  )
+
+compared_df$diff_below_zero == TRUE
+
+
+deconvolute_data <- function(data, decon_mat, col) {
+  vec_data <- data %>%
+    arrange(row, col) %>%
+    pull({{ col }})
+
+  vec_adjusted <- solve(decon_mat) %*% vec_data
+
+  data %>%
+    mutate(
+      adjusted = vec_adjusted
+    )
+}
+
 
 df_lum %>%
-  filter(
-    cycle_nr == 50
-  ) %>%
+  drop_na() %>%
+  group_by(cycle_nr) %>%
+  arrange(row, col) %>%
+  nest() %>%
   mutate(
-    dis = well_dis(row, col),
-    pred_back = predict_background(dis)
+    adjusted_data = purrr::map(data, ~deconvolute_data(.x, matrix_D, raw_lum))
   ) %>%
-  ggplot(aes(dis)) +
-  geom_point(aes(y = lum / max(lum))) +
-  geom_smooth(aes(y = pred_back), se = FALSE, colour = "tomato") +
-  scale_y_log10() +
-  theme_linedraw() +
-  theme(
-    panel.grid.minor = element_blank()
-  )
+  select(cycle_nr, adjusted_data) %>%
+  unnest(adjusted_data) %>%
+  pivot_longer(cols = c(adjusted, raw_lum)) %>%
+  mutate(
+    cycle_nr = str_extract(cycle_nr, "\\d+") %>% as.numeric()
+  ) %>%
+
+  ggplot(aes(cycle_nr, value, colour = name, group = well)) +
+  geom_line() +
+  facet_wrap(~name) +
+  theme_classic() +
+  scale_y_log10()
+
+
+df_lum %>%
+  drop_na() %>%
+  mutate(
+    cycle_nr = str_extract(cycle_nr, "\\d+") %>% as.numeric()
+  ) %>%
+
+  ggplot(aes(cycle_nr, raw_lum, group = well)) +
+  geom_line() +
+  scale_y_log10()
+
+
+
