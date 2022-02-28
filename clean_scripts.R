@@ -1,0 +1,580 @@
+library(tidyverse)
+
+
+# Setup Functions ---------------------------------------------------------
+
+
+# convert letter to it's numeric representation
+let_to_num <- function(x) {
+  x <- stringr::str_to_upper(x)
+  as.numeric(factor(x), levels = LETTERS)
+}
+
+# pad out a number to two digits, returned as a string
+num_to_2d <- function(x, width = 2) {
+  stringr::str_pad(x, width = width, side = "left", pad = "0"
+  )
+}
+
+# given a column number and a row (either number or letter) return the
+# 3-character well that is joined from the two
+join_well <- function(row, col) {
+  if (is.numeric(row)) {
+    row <- LETTERS[row]
+  }
+  stringr::str_glue("{row}{num_to_2d(col)}") %>%
+    as.character()
+}
+
+well_to_num <- function(x) {
+  stringr::str_extract(x, "\\d+$") %>%
+    as.numeric()
+}
+
+well_to_let <- function(x) {
+  stringr::str_extract(x, "^\\w")
+}
+
+well_dis <- function (row, col, calibrate_row = 5, calibrate_col = 5) {
+  sqrt((row - calibrate_row) ^ 2 + (col - calibrate_col) ^ 2)
+}
+
+predict_background <- function(dis,
+                               height = 3,
+                               well_spacing = 25) {
+  (height ^ 3) / (
+    height ^ 2 + (dis * well_spacing) ^ 2
+  ) ^ (3/2)
+}
+
+well_plot <- function(data, row, col, fill, log10_fill = TRUE) {
+  plt <- data %>%
+    ggplot(aes({{ col }}, {{ row }}))
+
+  if (log10_fill) {
+    plt <- plt +
+      geom_tile(
+        aes(fill = log10( {{ fill }})),
+        alpha = 0.9,
+        colour = "gray30"
+      )
+
+  } else {
+    plt <- plt +
+      geom_tile(
+        aes(fill = {{ fill }}),
+        alpha = 0.9,
+        colour = "gray30"
+      )
+  }
+
+  plt +
+    # geom_tile(alpha = 0.9, colour = "gray30") +
+    scale_fill_viridis_c(breaks = scales::pretty_breaks())  +
+    scale_x_continuous(
+      name = NULL,
+      expand = expansion(),
+      breaks = 1:23,
+      position = "top"
+    ) +
+    scale_y_reverse(
+      name = NULL,
+      expand = expansion(),
+      breaks = 1:15,
+      labels = LETTERS[1:15]
+    ) +
+    theme_linedraw() +
+    theme(
+      aspect.ratio = 15 / 23,
+      panel.grid = element_blank(),
+      axis.text.y = element_text(hjust = 0.5),
+      legend.title = element_text(size = 10),
+      axis.ticks = element_blank()
+    )
+}
+
+overlay_plate <- function(colour = "gray10",
+                          size = 1,
+                          fill = "NA") {
+  annotate(
+    geom = "rect",
+    ymin = 3.5,
+    ymax = 3.5 + 8,
+    xmin = 7.5,
+    xmax = 7.5 + 12,
+    colour = colour,
+    size = size,
+    fill = fill
+  )
+}
+
+# Read in Calibration Data ------------------------------------------------
+
+df_od <-
+  readxl::read_excel(
+    path = "inst/Xfiles/tecan/calibration/calTecan1.xlsx",
+    skip = 45,
+    n_max = 122
+  ) %>%
+  pivot_longer(
+    cols = matches("\\w\\d{1,2}"),
+    names_to = "well",
+    values_to = "od"
+  ) %>%
+  janitor::clean_names() %>%
+  drop_na() %>%
+  mutate(
+    row = well_to_let(well) %>% let_to_num(),
+    col = well_to_num(well),
+    well = join_well(LETTERS[row], col)
+  )
+
+df_lum <-
+  readxl::read_excel(
+    path = "inst/Xfiles/tecan/calibration/calTecan3.xlsx",
+    skip = 168
+    ) %>%
+  pivot_longer(
+    cols = matches("\\w\\d{1,2}"),
+    names_to = "well",
+    values_to = "lum"
+  ) %>%
+  janitor::clean_names() %>%
+  drop_na() %>%
+  mutate(
+    row = well_to_let(well) %>% let_to_num(),
+    col = well_to_num(well),
+    well = join_well(LETTERS[row], col),
+    lum = as.numeric(lum),
+    cycle_nr = as.numeric(cycle_nr)
+  ) %>%
+  group_by(cycle_nr) %>%
+  nest() %>%
+  mutate(
+    max_signal = purrr::map_dbl(data, ~max(.x$lum, na.rm = TRUE))
+  ) %>%
+    unnest(data) %>%
+    ungroup() %>%
+    mutate(
+      ratio = if_else(lum < 0, 0, lum / max_signal)
+    )
+
+
+
+
+
+
+# Time Average Bleedthrough -----------------------------------------------
+
+bleed_through <- df_lum %>%
+  select(well, row, col, lum, ratio) %>%
+  group_by(well, row, col) %>%
+  summarise(
+    lum_mean = mean(lum, na.rm = TRUE),
+    lum_sd   = sd(lum, na.rm = TRUE),
+    ratio_mean = mean(ratio, na.rm = TRUE),
+    ratio_sd   = sd(ratio, na.rm = TRUE)
+  )
+
+
+# Create Extended Tibble --------------------------------------------------
+
+
+create_blank_plate <- function(n_cols, n_rows) {
+  expand.grid(col = seq(n_cols), row = seq(n_rows)) %>%
+    as_tibble()
+}
+
+
+
+create_extended_tibble <- function(data,
+                                   calibrate_row = 5,
+                                   calibrate_col = 5,
+                                   blank_id_col
+                                   ) {
+
+  n_rows <- max(data$row)
+  n_cols <- max(data$col)
+
+  row_adjustment <- n_rows - calibrate_row
+  col_adjustment <- n_cols - calibrate_col
+
+  blank_av <- data %>%
+    filter({{ blank_id_col }}) %>%
+    ungroup() %>%
+    summarise(
+      .groups = "keep",
+      b_average_ratio = mean(ratio_mean, na.rm = TRUE),
+      b_average_sd    =   sd(ratio_mean, na.rm = TRUE)
+    )
+
+  data %>%
+    mutate(
+      row = row + row_adjustment,
+      col = col + col_adjustment
+    ) %>%
+    right_join(
+      create_blank_plate(23, 15)
+    ) %>%
+    mutate(
+      dis = well_dis(
+        row = row,
+        col = col,
+        calibrate_row = calibrate_row + row_adjustment,
+        calibrate_col = calibrate_col + col_adjustment
+      )
+    ) %>%
+    group_by(dis) %>%
+    mutate(
+      average_ratio_mean = mean(ratio_mean, na.rm = TRUE),
+      average_ratio_sd    = mean(ratio_sd, na.rm = TRUE)
+    ) %>%
+    ungroup() %>%
+    mutate(
+      ratio_mean = if_else(
+        is.na(ratio_mean),
+        average_ratio_mean,
+        ratio_mean
+      ),
+      ratio_sd = if_else(
+        is.na(ratio_sd),
+        average_ratio_sd,
+        ratio_sd
+      ),
+      ratio_mean = if_else(
+        is.na(ratio_mean),
+        blank_av$b_average_ratio,
+        ratio_mean
+      ),
+      ratio_sd = if_else(
+        is.na(ratio_sd),
+        blank_av$b_average_sd,
+        ratio_mean
+      )
+    ) %>%
+    select(well, row, col, lum_mean, lum_sd, ratio_mean, ratio_sd, dis)
+}
+
+extended_tibble <- bleed_through %>%
+  mutate(
+    blank = if_else(col == 12, TRUE, FALSE)
+  ) %>%
+  create_extended_tibble(blank_id_col = blank)
+
+extended_tibble %>%
+  well_plot(row, col, ratio_mean) +
+  overlay_plate()
+
+
+# Create Decon Matrix -----------------------------------------------------
+
+matrix_from_tibble <- function(data, value) {
+  data %>%
+    select(row, col , {{ value }}) %>%
+    arrange(row, col) %>%
+    pivot_wider(values_from = {{ value }}, names_from = col) %>%
+    column_to_rownames("row") %>%
+    as.matrix()
+}
+
+tibble_from_vec <- function(vec) {
+  vec %>%
+    as_tibble() %>%
+    mutate(
+      col = rep(1:12, 8),
+      row = rep(1:8, each = 12)
+    )
+}
+
+decon_col <- function(mat, rows, col = 12) {
+  lapply(rows, function(x) {
+    mat[x, seq(col, col + 11)] %>%
+      toeplitz()
+  }) %>%
+    do.call(rbind, .)
+}
+
+make_decon_matrix <- function(mat, sample_row = 8, sample_col = 12) {
+  lapply(seq(sample_row, 1), function(x) {
+    decon_col(mat, rows = seq(x, x + max(sample_row) - 1))
+  }) %>%
+    do.call(cbind, .)
+}
+
+deconvolute_data <- function(data, decon_mat, col) {
+  vec_data <- data %>%
+    arrange(row, col) %>%
+    pull({{ col }})
+
+  vec_adjusted <- solve(decon_mat) %*% vec_data
+
+  data %>%
+    mutate(
+      adjusted = vec_adjusted
+    )
+}
+
+extended_tibble %>%
+  matrix_from_tibble(ratio_mean) %>%
+  make_decon_matrix() %>%
+  deconvolute_data(
+    data = filter(df_lum, cycle_nr == 100),
+    decon_mat = .,
+    col = lum
+  ) %>%
+  well_plot(row, col, adjusted, log10_fill = FALSE)
+
+
+
+create_decon_matrix <- function(data,
+                                calibrate_row = 5,
+                                calibrate_col = 5,
+                                blank_col = 12) {
+  bleed_through <- data %>%
+    select(well, row, col, lum, ratio) %>%
+    group_by(well, row, col) %>%
+    summarise(
+      .groups = "keep",
+      lum_mean = mean(lum, na.rm = TRUE),
+      lum_sd   = sd(lum, na.rm = TRUE),
+      ratio_mean = mean(ratio, na.rm = TRUE),
+      ratio_sd   = sd(ratio, na.rm = TRUE)
+    )
+
+  extended_tibble <- bleed_through %>%
+    mutate(
+      blank = if_else(col == blank_col, TRUE, FALSE)
+    ) %>%
+    create_extended_tibble(
+      calibrate_row = calibrate_row,
+      calibrate_col = calibrate_col,
+      blank_id_col = blank
+      )
+
+  extended_tibble %>%
+    matrix_from_tibble(ratio_mean) %>%
+    make_decon_matrix()
+}
+
+# Make Ideal Matrix -------------------------------------------------------
+
+random_extended_matrix <- function(data) {
+  matrix_e <- matrix_from_tibble(data, ratio_mean)
+
+  matrix_sd <- matrix_from_tibble(data, ratio_sd)
+
+  matrix_rand <- matrix(rnorm(15 * 23, 0, 1), ncol = 23)
+
+  matrix_e + matrix_rand * matrix_sd
+}
+
+create_random_decon_matrix <- function(data,
+                                calibrate_row = 5,
+                                calibrate_col = 5,
+                                blank_col = 12) {
+  bleed_through <- data %>%
+    select(well, row, col, lum, ratio) %>%
+    group_by(well, row, col) %>%
+    summarise(
+      .groups = "keep",
+      lum_mean = mean(lum, na.rm = TRUE),
+      lum_sd   = sd(lum, na.rm = TRUE),
+      ratio_mean = mean(ratio, na.rm = TRUE),
+      ratio_sd   = sd(ratio, na.rm = TRUE)
+    )
+
+  extended_tibble <- bleed_through %>%
+    mutate(
+      blank = if_else(col == blank_col, TRUE, FALSE)
+    ) %>%
+    create_extended_tibble(
+      calibrate_row = calibrate_row,
+      calibrate_col = calibrate_col,
+      blank_id_col = blank
+    )
+
+  extended_tibble %>%
+    random_extended_matrix() %>%
+    make_decon_matrix()
+}
+
+
+decon_each_frame <- function(data, decon_mat, col) {
+  data %>%
+    group_by(cycle_nr) %>%
+    nest() %>%
+    mutate(
+      adjusted = purrr::map(
+        data,
+        deconvolute_data,
+        decon_mat = decon_mat,
+        col = {{ col }}
+        )
+    ) %>%
+    select(cycle_nr, adjusted) %>%
+    unnest(adjusted)
+}
+
+
+create_random_decon_matrix(df_lum)
+
+
+working_df <- df_lum
+
+instrument_sensitivity <- df_lum %>%
+  filter(col == 12) %>%
+  summarise(sd(lum)) %>%
+  unlist
+
+instrument_sensitivity <- instrument_sensitivity * 3
+
+counter <- 0
+
+found_best <- FALSE
+
+while (!found_best) {
+  counter <- counter + 1
+
+
+  matrix_D_working <- create_random_decon_matrix(working_df)
+
+  deconned_working_data <- working_df %>%
+    decon_each_frame(matrix_D_working, lum)
+
+  compared_df <- deconned_working_data %>%
+    filter(well != "E05") %>%
+    mutate(
+      diff = adjusted - instrument_sensitivity,
+      lower = diff <= 0
+      )
+
+  if (FALSE %in% compared_df$lower) {
+    print(counter)
+    if(counter == 1) {
+      matrix_D_best <<- matrix_D_working
+
+    } else {
+      matrix_D_best <<- matrix_D_working %*% matrix_D_best
+    }
+    print(image(matrix_D_best))
+
+    working_df <<- deconned_working_data
+
+    # plot(working_df$cycle_nr, working_df$adjusted, type = "l")
+
+    print(nrow(deconned_working_data) - sum(compared_df$lower))
+
+  } else {
+    found_best <<- TRUE
+
+    matrix_D_best <<- matrix_D_working
+
+  }
+
+}
+
+compared_df %>%
+  ggplot(aes(cycle_nr, adjusted)) +
+  geom_line(aes(group = well))
+
+
+
+# Process The Data --------------------------------------------------------
+
+
+
+matrix_D <- create_decon_matrix(df_lum)
+
+
+
+
+
+
+adjusted_df <- df_lum %>%
+  group_by(cycle_nr) %>%
+  nest() %>%
+  mutate(
+    adjusted = purrr::map(
+      data,
+      deconvolute_data,
+      decon_mat = matrix_D,
+      col = lum)
+  ) %>%
+  select(cycle_nr, adjusted) %>%
+  unnest(adjusted)
+
+adjusted_df %>%
+  filter(cycle_nr == 100) %>%
+  well_plot(row, col, adjusted, log10_fill = FALSE) +
+  geom_text(aes(label = round(adjusted, 2)), colour = "white")
+
+
+adjusted_df %>%
+  pivot_longer(
+    cols = c(lum, adjusted),
+    names_to = "sample",
+    values_to = "value"
+  ) %>%
+
+
+  ggplot(aes(cycle_nr, value, group = well, colour = sample)) +
+  geom_line() + geom_point()  +
+
+  scale_y_log10()
+
+
+
+
+
+sample_df <-
+  readxl::read_excel(
+    path = "inst/Xfiles/tecan/tecanOFF2.xlsx",
+    skip = 168
+  ) %>%
+  pivot_longer(
+    cols = matches("\\w\\d{1,2}"),
+    names_to = "well",
+    values_to = "lum"
+  ) %>%
+  janitor::clean_names() %>%
+  drop_na() %>%
+  mutate(
+    row = well_to_let(well) %>% let_to_num(),
+    col = well_to_num(well),
+    well = join_well(LETTERS[row], col),
+    lum = as.numeric(lum),
+    cycle_nr = as.numeric(cycle_nr)
+  ) %>%
+  group_by(cycle_nr) %>%
+  nest() %>%
+  mutate(
+    max_signal = purrr::map_dbl(data, ~max(.x$lum, na.rm = TRUE))
+  ) %>%
+  unnest(data) %>%
+  ungroup() %>%
+  mutate(
+    ratio = if_else(lum < 0, 0, lum / max_signal)
+  )
+
+sample_df %>%
+  filter(cycle_nr == 100) %>%
+  deconvolute_data(matrix_D, lum) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  well_plot(row, col, value) +
+  facet_wrap(~name, ncol = 1)
+
+
+working_df %>%
+  filter(well != "E05") %>%
+  well_plot(row, col, lum)
+
+
+
+
+
+
+
+
+
+
+

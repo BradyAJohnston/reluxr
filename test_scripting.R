@@ -221,6 +221,7 @@ df %>%
 
 
 # Create Averaged Values --------------------------------------------------
+
 df <- df %>%
   mutate(
     dis = well_dis(row, col, blank_row = 8, blank_col = 12)
@@ -268,8 +269,9 @@ df_filled <- df_filled %>%
   )
 
 
+
 df_filled %>%
-  well_plot(row, col, mean, log10_fill = FALSE) +
+  well_plot(row, col, mean, log10_fill = TRUE) +
   labs(title = "Calibration plate with average values") +
   overlay_plate()
 
@@ -382,7 +384,11 @@ df_lum %>%
   arrange(row, col) %>%
   nest() %>%
   mutate(
-    adjusted_data = purrr::map(data, ~deconvolute_data(.x, matrix_D, raw_lum))
+    adjusted_data = purrr::map(data, ~deconvolute_data(
+      data = .x,
+      decon_mat = make_decon_matrix(matrix_mean)
+      , raw_lum)
+      )
   ) %>%
   select(cycle_nr, adjusted_data) %>%
   unnest(adjusted_data) %>%
@@ -390,6 +396,11 @@ df_lum %>%
   mutate(
     cycle_nr = str_extract(cycle_nr, "\\d+") %>% as.numeric()
   ) %>%
+  filter(cycle_nr == 100) %>%
+  well_plot(row, col, value) +
+  facet_grid(cols = vars(name))
+
+stop()
 
   ggplot(aes(cycle_nr, value, colour = name, group = well)) +
   geom_line() +
@@ -398,15 +409,16 @@ df_lum %>%
   scale_y_log10()
 
 
-df_lum %>%
-  drop_na() %>%
-  mutate(
-    cycle_nr = str_extract(cycle_nr, "\\d+") %>% as.numeric()
-  ) %>%
+for (i in 1:10) {
 
-  ggplot(aes(cycle_nr, raw_lum, group = well)) +
-  geom_line() +
-  scale_y_log10()
+  matrix_e <- matrix_mean +       # time-averaged bleed through matrix
+    matrix(rnorm(96), nrow = 8) * # randomised matrix each time
+    matrix_sd                     # sd matrix from time average bleed through
+
+  decon_matrix <- make_decon_matrix(matrix_e)
+
+  deconvolute_data(df_mean, decon_mat = decon_matrix, col = mean)
+}
 
 
 
