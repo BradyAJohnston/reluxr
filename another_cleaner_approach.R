@@ -4,10 +4,10 @@ source("functions.R")
 
 
 read_plate <- function(path) {
-    readxl::read_excel(
-      path = path,
-      skip = 168
-    ) %>%
+  readxl::read_excel(
+    path = path,
+    skip = 168
+  ) %>%
     pivot_longer(
       cols = matches("\\w\\d{1,2}"),
       names_to = "well",
@@ -23,7 +23,6 @@ read_plate <- function(path) {
       time_s = as.numeric(time_s),
       cycle_nr = as.numeric(cycle_nr)
     )
-
 }
 
 input_lum <- read_plate("inst/Xfiles/tecan/calibration/calTecan2.xlsx")
@@ -39,7 +38,7 @@ raw_bg <- input_lum %>%
 
 
 lum_bg_mean <- mean(raw_bg$lum)
-lum_bg_sd   <- sd(raw_bg$lum)
+lum_bg_sd <- sd(raw_bg$lum)
 
 instrument_sensitivity <- lum_bg_sd * 3
 
@@ -68,14 +67,17 @@ time_averaged_df <- df_observed_values %>%
   ungroup() %>%
   filter(cycle_nr > 30) %>%
   group_by(well, row, col) %>%
-  summarise(ratio_mean = mean(ratio),
-            ratio_sd   = sd(ratio)) %>%
+  summarise(
+    ratio_mean = mean(ratio),
+    ratio_sd = sd(ratio)
+  ) %>%
   ungroup()
 
 lum_ratio_backgrounds <- time_averaged_df %>%
   filter(col == 12) %>%
-  summarise(mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
-            sd   = mean(ratio_sd, na.rm = TRUE)
+  summarise(
+    mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
+    sd = mean(ratio_sd, na.rm = TRUE)
   )
 
 lum_ratio_backgrounds
@@ -84,7 +86,7 @@ bleed_through_df <- time_averaged_df %>%
   create_extended_tibble(
     lum_bg_ratio_mean = lum_ratio_backgrounds$mean,
     lum_bg_ratio_sd = lum_ratio_backgrounds$sd
-    )
+  )
 
 
 # arrange E in kernal deconvolution matrix --------------------------------
@@ -105,18 +107,22 @@ comparison_plot <- function(data) {
       name = if_else(name == "lum", "Raw", "Deconvoluted"),
       name = factor(name, levels = c("Raw", "Deconvoluted"))
     ) %>%
-    well_plot(row, col, value) +
+    plot_wells(row, col, value) +
     facet_wrap(~name, ncol = 2, strip.position = "bottom") +
-    theme(strip.text.y = element_text(angle = 0),
-          strip.background = element_rect(fill = "gray40")) +
+    theme(
+      strip.text.y = element_text(angle = 0),
+      strip.background = element_rect(fill = "gray40")
+    ) +
     labs(title = "Deconvoluted with Average Kernal D")
 }
 
 
 
-deconvolute_data(filter(df_observed_values, cycle_nr == 100),
-                 decon_mat = matrix_decon_D,
-                 lum) %>%
+deconvolute_data(
+  filter(df_observed_values, cycle_nr == 100),
+  decon_mat = matrix_decon_D,
+  lum
+) %>%
   comparison_plot()
 
 
@@ -125,6 +131,23 @@ read_plate("inst/Xfiles/tecan/tecanOFF3.xlsx") %>%
   filter(cycle_nr == 100) %>%
   deconvolute_data(matrix_decon_D, lum) %>%
   comparison_plot()
+
+read_plate("inst/xfiles/tecan/tecanON2.xlsx") %>%
+  group_by(cycle_nr) %>%
+  nest() %>%
+  mutate(
+    adjusted = purrr::map(data, ~deconvolute_data(.,
+                          decon_mat = matrix_decon_D,
+                          col = lum))
+  ) %>%
+  select(cycle_nr, adjusted) %>%
+  unnest(adjusted) %>%
+  # deconvolute_data(matrix_decon_D, lum) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  ggplot(aes(cycle_nr, value, colour = name, group = well)) +
+  geom_line() +
+  scale_y_log10() +
+  facet_wrap(~name, ncol = 1)
 
 
 read_plate("inst/xfiles/tecan/tecanON2.xlsx") %>%
@@ -141,11 +164,10 @@ random_extended_matrix <- function(data) {
 
   matrix_e + matrix_rand * matrix_sd
   # matrix_e + rnorm(1, 0, 1) * matrix_sd
-
 }
 
 bleed_through_df %>%
-  well_plot(row, col, ratio_mean, log10_fill = FALSE)
+  plot_wells(row, col, ratio_mean, log10_fill = FALSE)
 
 working_df <- filter(df_observed_values, cycle_nr == 100)
 
@@ -171,9 +193,9 @@ while (counter < 100) {
 
   comparison_df <- working_df %>%
     filter(well != "E05") %>%
-      mutate(
-        lower = adjusted - instrument_sensitivity <= 0
-      )
+    mutate(
+      lower = adjusted - instrument_sensitivity <= 0
+    )
 
   # comparison_df
 
@@ -191,17 +213,16 @@ while (counter < 100) {
     }
   }
   print(image(best_matrix_D))
-
 }
 
 working_df %>%
-  # well_plot()
+  # plot_wells()
 
-# deconvolute_data(filter(df_observed_values, cycle_nr == 100),
-#                  decon_mat = best_matrix_D,
-#                  lum) %>%
+  # deconvolute_data(filter(df_observed_values, cycle_nr == 100),
+  #                  decon_mat = best_matrix_D,
+  #                  lum) %>%
   pivot_longer(c(lum, adjusted)) %>%
-  well_plot(row, col, value) +
+  plot_wells(row, col, value) +
   facet_wrap(~name, ncol = 1)
 
 df_observed_values %>%
@@ -209,17 +230,15 @@ df_observed_values %>%
   nest() %>%
   mutate(
     adjusted = purrr::map(data, deconvolute_data,
-                          decon_mat = best_matrix_D,
-                          col = lum)
+      decon_mat = best_matrix_D,
+      col = lum
+    )
   ) %>%
   select(cycle_nr, adjusted) %>%
   unnest(adjusted) %>%
-
   pivot_longer(c(lum, adjusted)) %>%
-
   ggplot(aes(cycle_nr, value, colour = name, group = well)) +
   geom_line(aes()) +
-  scale_y_log10()  +
+  scale_y_log10() +
   facet_wrap(~name, ncol = 1) +
   geom_hline(yintercept = instrument_sensitivity)
-

@@ -1,0 +1,48 @@
+#' Creates blank plate with given columns and rows
+#'
+#' @param n_cols Number of columns.
+#' @param n_rows Number of rows.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_blank_plate <- function(n_cols, n_rows) {
+  expand.grid(col = seq(n_cols), row = seq(n_rows)) %>%
+    tibble::as_tibble()
+}
+
+#' Creates a matrix from a tibble with row and col columns.
+#'
+#' @param data Tibble to turn into matrix.
+#' @param value Column that becomes the values.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+matrix_from_tibble <- function(data, value) {
+  data %>%
+    dplyr::select(row, col , {{ value }}) %>%
+    dplyr::arrange(row, col) %>%
+    tidyr::pivot_wider(values_from = {{ value }}, names_from = col) %>%
+    tibble::column_to_rownames("row") %>%
+    as.matrix()
+}
+
+#' Turns a vector into a palte-based tibble.
+#'
+#' @param vec Vector of values.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+tibble_from_vec <- function(vec, n_row = 8, n_col = 12) {
+  vec %>%
+    tibble::as_tibble() %>%
+    dplyr::mutate(
+      col = rep(seq(n_col), n_row),
+      row = rep(seq(n_row), each = n_col)
+    )
+}

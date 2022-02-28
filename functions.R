@@ -4,18 +4,18 @@ let_to_num <- function(x) {
 }
 
 # pad out a number to two digits, returned as a string
-num_to_2d <- function(x, width = 2) {
+num_pad <- function(x, width = 2) {
   stringr::str_pad(x, width = width, side = "left", pad = "0"
   )
 }
 
 # given a column number and a row (either number or letter) return the
 # 3-character well that is joined from the two
-join_well <- function(row, col) {
+join_well <- function(row, col, num_width = 2) {
   if (is.numeric(row)) {
     row <- LETTERS[row]
   }
-  stringr::str_glue("{row}{num_to_2d(col)}") %>%
+  stringr::str_glue("{row}{num_pad(col, width = num_width)}") %>%
     as.character()
 }
 
@@ -40,7 +40,7 @@ predict_background <- function(dis,
   ) ^ (3/2)
 }
 
-well_plot <- function(data, row, col, fill, log10_fill = TRUE) {
+plot_wells <- function(data, row, col, fill, log10_fill = TRUE) {
   plt <- data %>%
     ggplot(aes({{ col }}, {{ row }}))
 

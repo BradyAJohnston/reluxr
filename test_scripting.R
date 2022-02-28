@@ -11,7 +11,7 @@ let_to_num <- function(x) {
 }
 
 # pad out a number to two digits, returned as a string
-num_to_2d <- function(x, width = 2) {
+num_pad <- function(x, width = 2) {
   stringr::str_pad(x, width = width, side = "left", pad = "0"
   )
 }
@@ -22,7 +22,7 @@ join_well <- function(row, col) {
   if (is.numeric(row)) {
     row <- LETTERS[row]
   }
-  stringr::str_glue("{row}{num_to_2d(col)}") %>%
+  stringr::str_glue("{row}{num_pad(col)}") %>%
     as.character()
 }
 
@@ -47,7 +47,7 @@ predict_background <- function(dis,
   ) ^ (3/2)
 }
 
-well_plot <- function(data, row, col, fill, log10_fill = TRUE) {
+plot_wells <- function(data, row, col, fill, log10_fill = TRUE) {
   plt <- data %>%
   ggplot(aes({{ col }}, {{ row }}))
 
@@ -215,7 +215,7 @@ df <- expand.grid(col = 1:23, row = 1:15) %>%
   left_join(df_mean_sd)
 
 df %>%
-  well_plot(row, col, mean) +
+  plot_wells(row, col, mean) +
   overlay_plate() +
   labs(title = "Original plate in new layout")
 
@@ -271,7 +271,7 @@ df_filled <- df_filled %>%
 
 
 df_filled %>%
-  well_plot(row, col, mean, log10_fill = TRUE) +
+  plot_wells(row, col, mean, log10_fill = TRUE) +
   labs(title = "Calibration plate with average values") +
   overlay_plate()
 
@@ -351,7 +351,7 @@ df_adjusted <- solve(make_decon_matrix(matrix_e)) %*% vec_lum %>%
 
 df_adjusted %>%
 
-  well_plot(row, col, V1, log10_fill = FALSE) +
+  plot_wells(row, col, V1, log10_fill = FALSE) +
   geom_text(aes(label = round(V1, 3)), colour = "black")
 
 
@@ -397,7 +397,7 @@ df_lum %>%
     cycle_nr = str_extract(cycle_nr, "\\d+") %>% as.numeric()
   ) %>%
   filter(cycle_nr == 100) %>%
-  well_plot(row, col, value) +
+  plot_wells(row, col, value) +
   facet_grid(cols = vars(name))
 
 stop()

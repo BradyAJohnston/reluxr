@@ -161,7 +161,7 @@ extended_tibble <- bleed_through %>%
   create_extended_tibble(blank_id_col = blank)
 
 extended_tibble %>%
-  well_plot(row, col, ratio_mean) +
+  plot_wells(row, col, ratio_mean) +
   overlay_plate()
 
 
@@ -190,7 +190,7 @@ extended_tibble %>%
     decon_mat = .,
     col = lum
   ) %>%
-  well_plot(row, col, adjusted, log10_fill = FALSE)
+  plot_wells(row, col, adjusted, log10_fill = FALSE)
 
 
 
@@ -373,7 +373,7 @@ adjusted_df <- df_lum %>%
 
 adjusted_df %>%
   filter(cycle_nr == 100) %>%
-  well_plot(row, col, adjusted, log10_fill = FALSE) +
+  plot_wells(row, col, adjusted, log10_fill = FALSE) +
   geom_text(aes(label = round(adjusted, 2)), colour = "white")
 
 
@@ -428,7 +428,7 @@ sample_df %>%
   filter(cycle_nr == 100) %>%
   deconvolute_data(matrix_D, lum) %>%
   pivot_longer(c(lum, adjusted)) %>%
-  well_plot(row, col, value) +
+  plot_wells(row, col, value) +
   facet_wrap(~name, ncol = 1)
 
 
