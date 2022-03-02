@@ -56,3 +56,104 @@ deconvolute_data <- function(data, decon_mat, col) {
       adjusted = vec_adjusted
     )
 }
+
+#' Create Randomised Extended Matrix for Optimisation
+#'
+#' @param data Extended tibble from `create_extended_tibble()`.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+random_extended_matrix <- function(data) {
+  matrix_e <- matrix_from_tibble(data, ratio_mean)
+  matrix_sd <- matrix_from_tibble(data, ratio_sd)
+  matrix_rand <- matrix(rnorm(15 * 23, 0, 1), ncol = 23)
+
+  matrix_e + matrix_rand * matrix_sd
+  # matrix_e + rnorm(1, 0, 1) * matrix_sd
+}
+
+#' Create Extended dataframe from Calibration Plate.
+#'
+#' @param data
+#' @param calibrate_row
+#' @param calibrate_col
+#' @param lum_bg_ratio_mean
+#' @param lum_bg_ratio_sd
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_extended_tibble <- function(data,
+                                   calibrate_row = 5,
+                                   calibrate_col = 5,
+                                   lum_bg_ratio_mean,
+                                   lum_bg_ratio_sd
+) {
+
+  n_rows <- max(data$row)
+  n_cols <- max(data$col)
+
+  row_adjustment <- n_rows - calibrate_row
+  col_adjustment <- n_cols - calibrate_col
+
+
+  data %>%
+
+    # translate the plate as required
+    mutate(
+      row = row + row_adjustment,
+      col = col + col_adjustment
+    ) %>%
+
+    # fill with empty values for the other spots in extended plate
+    right_join(
+      create_blank_plate(23, 15)
+    ) %>%
+
+    # calculate distance for all wells in extended plate
+    mutate(
+      dis = well_dis(
+        row = row,
+        col = col,
+        calibrate_row = calibrate_row + row_adjustment,
+        calibrate_col = calibrate_col + col_adjustment
+      )
+    ) %>%
+
+    # fill in empty wells with values from corresponding wells with same
+    # distance from the calibration well
+    group_by(dis) %>%
+    mutate(
+      average_ratio_mean  = mean(ratio_mean, na.rm = TRUE),
+      average_ratio_sd    = mean(ratio_sd, na.rm = TRUE)
+    ) %>%
+    ungroup() %>%
+
+    # fill in remaining
+    mutate(
+      ratio_mean = if_else(
+        is.na(ratio_mean),
+        average_ratio_mean,
+        ratio_mean
+      ),
+      ratio_sd = if_else(
+        is.na(ratio_sd),
+        average_ratio_sd,
+        ratio_sd
+      ),
+      ratio_mean = if_else(
+        is.na(ratio_mean),
+        lum_bg_ratio_mean,
+        ratio_mean
+      ),
+      ratio_sd = if_else(
+        is.na(ratio_sd),
+        lum_bg_ratio_sd,
+        ratio_sd
+      )
+    ) %>%
+    select(well, row, col,  ratio_mean, ratio_sd, dis)
+}

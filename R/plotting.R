@@ -77,3 +77,51 @@ overlay_plate <- function(colour = "gray10",
     fill = fill
   )
 }
+
+
+#' Compare Lum and Adjusted
+#'
+#' @param data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_wells_comparison <- function(data) {
+  data %>%
+    pivot_longer(c(lum, adjusted)) %>%
+    mutate(
+      name = if_else(name == "lum", "Raw", "Deconvoluted"),
+      name = factor(name, levels = c("Raw", "Deconvoluted"))
+    ) %>%
+    plot_wells(value) +
+    facet_wrap(~name, ncol = 2, strip.position = "bottom") +
+    theme(
+      strip.text.y = element_text(angle = 0),
+      strip.background = element_rect(fill = "gray40")
+    ) +
+    labs(title = "Deconvoluted with Average Kernal D")
+}
+
+#' Plot Well Values
+#'
+#' Compare plotted well values over time.
+#'
+#' @param data Tibble containing `cycle_nr`, `lum`, and `adjusted` columns.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_wells_time <- function(data) {
+  data %>%
+    ggplot(aes(cycle_nr, value, colour = name, group = well)) +
+    geom_line(aes()) +
+    scale_y_log10() +
+    facet_wrap(~name, ncol = 1) +
+    geom_hline(yintercept = instrument_sensitivity) +
+    theme_linedraw() +
+    theme(
+      strip.background = element_rect(fill = "gray30")
+    )
+}

@@ -215,7 +215,7 @@ df <- expand.grid(col = 1:23, row = 1:15) %>%
   left_join(df_mean_sd)
 
 df %>%
-  plot_wells(row, col, mean) +
+  plot_wells(mean) +
   overlay_plate() +
   labs(title = "Original plate in new layout")
 
@@ -271,7 +271,7 @@ df_filled <- df_filled %>%
 
 
 df_filled %>%
-  plot_wells(row, col, mean, log10_fill = TRUE) +
+  plot_wells(mean, log10_fill = TRUE) +
   labs(title = "Calibration plate with average values") +
   overlay_plate()
 
@@ -351,7 +351,7 @@ df_adjusted <- solve(make_decon_matrix(matrix_e)) %*% vec_lum %>%
 
 df_adjusted %>%
 
-  plot_wells(row, col, V1, log10_fill = FALSE) +
+  plot_wells(V1, log10_fill = FALSE) +
   geom_text(aes(label = round(V1, 3)), colour = "black")
 
 
@@ -397,7 +397,7 @@ df_lum %>%
     cycle_nr = str_extract(cycle_nr, "\\d+") %>% as.numeric()
   ) %>%
   filter(cycle_nr == 100) %>%
-  plot_wells(row, col, value) +
+  plot_wells(value) +
   facet_grid(cols = vars(name))
 
 stop()

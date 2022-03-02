@@ -1,29 +1,29 @@
 library(tidyverse)
+library(reluxr)
+# source("functions.R")
 
-source("functions.R")
 
-
-read_plate <- function(path) {
-  readxl::read_excel(
-    path = path,
-    skip = 168
-  ) %>%
-    pivot_longer(
-      cols = matches("\\w\\d{1,2}"),
-      names_to = "well",
-      values_to = "lum"
-    ) %>%
-    janitor::clean_names() %>%
-    drop_na() %>%
-    mutate(
-      row = well_to_let(well) %>% let_to_num(),
-      col = well_to_num(well),
-      well = join_well(LETTERS[row], col),
-      lum = as.numeric(lum),
-      time_s = as.numeric(time_s),
-      cycle_nr = as.numeric(cycle_nr)
-    )
-}
+# read_plate <- function(path) {
+#   readxl::read_excel(
+#     path = path,
+#     skip = 168
+#   ) %>%
+#     pivot_longer(
+#       cols = matches("\\w\\d{1,2}"),
+#       names_to = "well",
+#       values_to = "lum"
+#     ) %>%
+#     janitor::clean_names() %>%
+#     drop_na() %>%
+#     mutate(
+#       row = well_to_let(well) %>% let_to_num(),
+#       col = well_to_num(well),
+#       well = join_well(LETTERS[row], col),
+#       lum = as.numeric(lum),
+#       time_s = as.numeric(time_s),
+#       cycle_nr = as.numeric(cycle_nr)
+#     )
+# }
 
 input_lum <- read_plate("inst/Xfiles/tecan/calibration/calTecan2.xlsx")
 
@@ -58,7 +58,7 @@ df_observed_values <- input_lum %>%
 
 
 # compute bleed-through factor array --------------------------------------
-
+#
 time_averaged_df <- df_observed_values %>%
   group_by(cycle_nr) %>%
   mutate(
@@ -100,21 +100,6 @@ matrix_decon_D <- bleed_through_df %>%
 # Deconvolute Data Average ------------------------------------------------
 
 
-comparison_plot <- function(data) {
-  data %>%
-    pivot_longer(c(lum, adjusted)) %>%
-    mutate(
-      name = if_else(name == "lum", "Raw", "Deconvoluted"),
-      name = factor(name, levels = c("Raw", "Deconvoluted"))
-    ) %>%
-    plot_wells(row, col, value) +
-    facet_wrap(~name, ncol = 2, strip.position = "bottom") +
-    theme(
-      strip.text.y = element_text(angle = 0),
-      strip.background = element_rect(fill = "gray40")
-    ) +
-    labs(title = "Deconvoluted with Average Kernal D")
-}
 
 
 
@@ -123,14 +108,14 @@ deconvolute_data(
   decon_mat = matrix_decon_D,
   lum
 ) %>%
-  comparison_plot()
+  plot_wells_comparison()
 
 
 
 read_plate("inst/Xfiles/tecan/tecanOFF3.xlsx") %>%
   filter(cycle_nr == 100) %>%
   deconvolute_data(matrix_decon_D, lum) %>%
-  comparison_plot()
+  plot_wells_comparison()
 
 read_plate("inst/xfiles/tecan/tecanON2.xlsx") %>%
   group_by(cycle_nr) %>%
@@ -153,7 +138,7 @@ read_plate("inst/xfiles/tecan/tecanON2.xlsx") %>%
 read_plate("inst/xfiles/tecan/tecanON2.xlsx") %>%
   filter(cycle_nr == 100) %>%
   deconvolute_data(matrix_decon_D, lum) %>%
-  comparison_plot()
+  plot_wells_comparison()
 
 # Iterative Deconvolution -------------------------------------------------
 
@@ -167,66 +152,80 @@ random_extended_matrix <- function(data) {
 }
 
 bleed_through_df %>%
-  plot_wells(row, col, ratio_mean, log10_fill = FALSE)
+  plot_wells(ratio_mean, log10_fill = FALSE)
 
 working_df <- filter(df_observed_values, cycle_nr == 100)
 
 looking_for_best <- TRUE
 counter <- 0
 
-while (counter < 100) {
-  counter <- counter + 1
-
-
-  matrix_D <- random_extended_matrix(bleed_through_df) %>%
-    make_decon_matrix()
-
-  if (counter == 1) {
-    best_matrix_D <- matrix_D
-  }
-
-  if (counter == 1) {
-    working_df$adjusted <- working_df$lum
-  }
-
-  working_df <- deconvolute_data(working_df, matrix_D, adjusted)
-
-  comparison_df <- working_df %>%
-    filter(well != "E05") %>%
-    mutate(
-      lower = adjusted - instrument_sensitivity <= 0
-    )
-
-  # comparison_df
-
-
-  print(sum(comparison_df$lower))
-
-  if (!(FALSE %in% comparison_df$lower)) {
-    best_matrix_D <<- matrix_D
-    looking_for_best <- FALSE
-  } else {
-    if (counter == 1) {
-      best_matrix_D <- matrix_D
-    } else {
-      best_matrix_D <- matrix_D %*% best_matrix_D
-    }
-  }
-  print(image(best_matrix_D))
-}
+# while (counter < 100) {
+#   counter <- counter + 1
+#
+#
+#   matrix_D <- random_extended_matrix(bleed_through_df) %>%
+#     make_decon_matrix()
+#
+#   if (counter == 1) {
+#     best_matrix_D <- matrix_D
+#   }
+#
+#   if (counter == 1) {
+#     working_df$adjusted <- working_df$lum
+#   }
+#
+#   working_df <- deconvolute_data(working_df, matrix_D, adjusted)
+#
+#   comparison_df <- working_df %>%
+#     filter(well != "E05") %>%
+#     mutate(
+#       lower = adjusted - instrument_sensitivity <= 0
+#     )
+#
+#
+#
+#
+#   print(sum(comparison_df$lower))
+#
+#   if (!(FALSE %in% comparison_df$lower)) {
+#     best_matrix_D <<- matrix_D
+#     looking_for_best <- FALSE
+#   } else {
+#     if (counter == 1) {
+#       best_matrix_D <- matrix_D
+#     } else {
+#       best_matrix_D <- matrix_D %*% best_matrix_D
+#     }
+#   }
+#   print(image(best_matrix_D))
+# }
 
 working_df %>%
-  # plot_wells()
+  plot_wells_comparison()
 
-  # deconvolute_data(filter(df_observed_values, cycle_nr == 100),
-  #                  decon_mat = best_matrix_D,
-  #                  lum) %>%
-  pivot_longer(c(lum, adjusted)) %>%
-  plot_wells(row, col, value) +
-  facet_wrap(~name, ncol = 1)
+
+decon_series <- function(data, decon_mat, col) {
+  data %>%
+    group_by(cycle_nr) %>%
+    nest() %>%
+    mutate(
+      adjusted = purrr::map(
+        .x = data,
+        .f = ~reluxr::deconvolute_data(
+          data = .x,
+          decon_mat = decon_mat,
+          col = col
+        )
+      )
+    ) %>%
+    select(cycle_nr, adjusted) %>%
+    unnest(adjusted)
+}
 
 df_observed_values %>%
   group_by(cycle_nr) %>%
+  decon_series(best_matrix_D, lum)
+
   nest() %>%
   mutate(
     adjusted = purrr::map(data, deconvolute_data,
@@ -237,8 +236,4 @@ df_observed_values %>%
   select(cycle_nr, adjusted) %>%
   unnest(adjusted) %>%
   pivot_longer(c(lum, adjusted)) %>%
-  ggplot(aes(cycle_nr, value, colour = name, group = well)) +
-  geom_line(aes()) +
-  scale_y_log10() +
-  facet_wrap(~name, ncol = 1) +
-  geom_hline(yintercept = instrument_sensitivity)
+  plot_wells_time()
