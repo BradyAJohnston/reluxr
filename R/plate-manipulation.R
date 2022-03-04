@@ -21,7 +21,7 @@ create_blank_plate <- function(n_cols, n_rows) {
 #' @export
 #'
 #' @examples
-matrix_from_tibble <- function(data, value) {
+tibble_to_matrix <- function(data, value) {
   data %>%
     dplyr::select(row, col , {{ value }}) %>%
     dplyr::arrange(row, col) %>%
@@ -38,11 +38,37 @@ matrix_from_tibble <- function(data, value) {
 #' @export
 #'
 #' @examples
-tibble_from_vec <- function(vec, n_row = 8, n_col = 12) {
+vec_to_tibble <- function(vec, n_row = 8, n_col = 12) {
   vec %>%
     tibble::as_tibble() %>%
     dplyr::mutate(
       col = rep(seq(n_col), n_row),
       row = rep(seq(n_row), each = n_col)
+    )
+}
+
+
+#' Title
+#'
+#' @param mat
+#' @param value_col
+#'
+#' @return
+#' @export
+#'
+#' @examples
+matrix_to_tibble <- function(mat, value_col = "value") {
+  mat %>%
+    tibble::as_tibble() %>%
+    dplyr::rename_with(.fn = ~stringr::str_extract(.x, "\\d+")) %>%
+    tibble::rownames_to_column("row") %>%
+    tidyr::pivot_longer(cols = matches("\\d+"),
+                 names_to = "col",
+                 values_to = value_col) %>%
+    dplyr::transmute(
+      row = as.numeric(row),
+      col = as.numeric(col),
+      well = join_well(row, col),
+      value = as.numeric(value)
     )
 }

@@ -196,7 +196,7 @@ create_extended_tibble <- function(data,
 
 
 
-matrix_from_tibble <- function(data, value) {
+tibble_to_matrix <- function(data, value) {
   data %>%
     select(row, col , {{ value }}) %>%
     arrange(row, col) %>%
@@ -205,7 +205,7 @@ matrix_from_tibble <- function(data, value) {
     as.matrix()
 }
 
-tibble_from_vec <- function(vec) {
+vec_to_tibble <- function(vec) {
   vec %>%
     as_tibble() %>%
     mutate(

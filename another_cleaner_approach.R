@@ -58,42 +58,75 @@ df_observed_values <- input_lum %>%
 
 
 # compute bleed-through factor array --------------------------------------
+
+calc_bleed_df <- function(data, time_cutoff = 30) {
+  time_averaged_df <- data %>%
+    group_by(cycle_nr) %>%
+    mutate(
+      ratio = lum / max(lum)
+    ) %>%
+    ungroup() %>%
+    filter(cycle_nr > time_cutoff) %>%
+    group_by(well, row, col) %>%
+    summarise(
+      ratio_mean = mean(ratio, na.rm = TRUE),
+      ratio_sd   = sd(ratio, na.rm = TRUE)
+    ) %>%
+    ungroup()
+
+  background_ratios <- time_averaged_df %>%
+    filter(col == 12) %>%
+    summarise(
+      mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
+      sd = mean(ratio_sd, na.rm = TRUE)
+    )
+
+  # print(background_ratios)
+
+  time_averaged_df %>%
+    create_extended_tibble(
+      lum_bg_ratio_mean = background_ratios$mean,
+      lum_bg_ratio_sd = background_ratios$sd
+    )
+}
+
+bleed_through_df <- calc_bleed_df(df_observed_values)
+
+# time_averaged_df <- df_observed_values %>%
+#   group_by(cycle_nr) %>%
+#   mutate(
+#     ratio = lum / max(lum)
+#   ) %>%
+#   ungroup() %>%
+#   filter(cycle_nr > 30) %>%
+#   group_by(well, row, col) %>%
+#   summarise(
+#     ratio_mean = mean(ratio),
+#     ratio_sd = sd(ratio)
+#   ) %>%
+#   ungroup()
 #
-time_averaged_df <- df_observed_values %>%
-  group_by(cycle_nr) %>%
-  mutate(
-    ratio = lum / max(lum)
-  ) %>%
-  ungroup() %>%
-  filter(cycle_nr > 30) %>%
-  group_by(well, row, col) %>%
-  summarise(
-    ratio_mean = mean(ratio),
-    ratio_sd = sd(ratio)
-  ) %>%
-  ungroup()
+# lum_ratio_backgrounds <- time_averaged_df %>%
+#   filter(col == 12) %>%
+#   summarise(
+#     mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
+#     sd = mean(ratio_sd, na.rm = TRUE)
+#   )
 
-lum_ratio_backgrounds <- time_averaged_df %>%
-  filter(col == 12) %>%
-  summarise(
-    mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
-    sd = mean(ratio_sd, na.rm = TRUE)
-  )
-
-lum_ratio_backgrounds
-
-bleed_through_df <- time_averaged_df %>%
-  create_extended_tibble(
-    lum_bg_ratio_mean = lum_ratio_backgrounds$mean,
-    lum_bg_ratio_sd = lum_ratio_backgrounds$sd
-  )
+# lum_ratio_backgrounds
+#
+# bleed_through_df <- time_averaged_df %>%
+#   create_extended_tibble(
+#     lum_bg_ratio_mean = lum_ratio_backgrounds$mean,
+#     lum_bg_ratio_sd = lum_ratio_backgrounds$sd
+#   )
 
 
 # arrange E in kernal deconvolution matrix --------------------------------
 
 
 matrix_decon_D <- bleed_through_df %>%
-  matrix_from_tibble(ratio_mean) %>%
+  tibble_to_matrix(ratio_mean) %>%
   make_decon_matrix()
 
 
@@ -142,22 +175,136 @@ read_plate("inst/xfiles/tecan/tecanON2.xlsx") %>%
 
 # Iterative Deconvolution -------------------------------------------------
 
-random_extended_matrix <- function(data) {
-  matrix_e <- matrix_from_tibble(data, ratio_mean)
-  matrix_sd <- matrix_from_tibble(data, ratio_sd)
-  matrix_rand <- matrix(rnorm(15 * 23, 0, 1), ncol = 23)
 
-  matrix_e + matrix_rand * matrix_sd
-  # matrix_e + rnorm(1, 0, 1) * matrix_sd
-}
+# decon_frames <- function(data, decon_mat) {
+#   data %>%
+#     group_by(cycle_nr) %>%
+#       nest() %>%
+#       mutate(
+#         adjusted = purrr::map(
+#           .x = data,
+#           .f = ~ deconvolute_data(
+#             data = .,
+#             decon_mat = decon_mat,
+#             col = lum
+#             )
+#         )
+#       ) %>%
+#       select(cycle_nr, adjusted) %>%
+#       unnest(adjusted)
+# }
+
+
+df_observed_values %>%
+  decon_frames(matrix_decon_D) %>%
+  filter(cycle_nr == 100) %>%
+  plot_wells_comparison()
+
+df_observed_values %>%
+  decon_frames(matrix_decon_D) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  plot_wells_time()
+
+bleed_through_df
 
 bleed_through_df %>%
-  plot_wells(ratio_mean, log10_fill = FALSE)
+  mutate(ratio_mean = if_else(ratio_mean < 0, 1e-10, ratio_mean)) %>%
+  plot_wells(ratio_mean, log10_fill = TRUE) +
+  geom_text(aes(label = round(ratio_mean, 10)))
 
-working_df <- filter(df_observed_values, cycle_nr == 100)
+# working_df <- filter(df_observed_values, cycle_nr == 100)
 
 looking_for_best <- TRUE
 counter <- 0
+
+working_df <- df_observed_values
+
+stop()
+matrix_D_storage <- list()
+while (looking_for_best) {
+  counter <- counter + 1
+
+  extended_matrix <- calc_bleed_df(working_df)
+
+  matrix_D <- extended_matrix %>%
+    mutate(
+      adjusted = ratio_mean + rnorm(nrow(.)) * ratio_sd
+    ) %>%
+    tibble_to_matrix(adjusted) %>%
+    make_decon_matrix()
+
+  adjusted_frames <- working_df %>%
+    decon_frames(matrix_D)
+
+  comparison <- adjusted_frames %>%
+    filter(well != join_well(5, 5)) %>%
+    mutate(
+      compare = adjusted - instrument_sensitivity < 0
+    ) %>%
+    pull(compare)
+
+  working_df <- adjusted_frames %>%
+    mutate(
+      lum = if_else(adjusted < lum | adjusted < instrument_sensitivity,
+                    adjusted,
+                    lum
+                    )
+    ) %>%
+    select(-adjusted)
+
+  if (FALSE %in% comparison) {
+    if (counter == 1) {
+      matrix_D_best <- matrix_D %*% diag(nrow = 96)
+      matrix_D_previous <- matrix_D
+      matrix_D_storage[[counter]] <- matrix_D_best
+    } else {
+      matrix_D_best <- matrix_D %*% matrix_D_previous
+      matrix_D_previous <- matrix_D
+      matrix_D_storage[[counter]] <- matrix_D_best
+    }
+  } else {
+    looking_for_best <- FALSE
+  }
+
+  print(df_observed_values %>%
+    filter(cycle_nr == 100) %>%
+    deconvolute_data(matrix_D_best, lum) %>%
+    plot_wells_comparison() +
+    labs(title = str_glue("Iteration {counter}")))
+}
+
+
+
+
+matrix_D_storage %>%
+  lapply(., function(x) {
+    df_observed_values %>%
+      filter(cycle_nr == 100) %>%
+      deconvolute_data(decon_mat = x, lum) %>%
+      mutate()
+  })
+
+working_df %>%
+  filter(cycle_nr == 100) %>%
+  plot_wells(lum)
+
+working_df %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  plot_wells_time()
+
+
+
+df_observed_values %>%
+  decon_frames(matrix_D_best) %>%
+  filter(cycle_nr == 100) %>%
+  plot_wells_comparison()
+  # pivot_longer(c(lum, adjusted)) %>%
+  # plot_wells_time()
+
+
+
+
+
 
 # while (counter < 100) {
 #   counter <- counter + 1

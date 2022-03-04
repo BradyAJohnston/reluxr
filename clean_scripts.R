@@ -183,7 +183,7 @@ deconvolute_data <- function(data, decon_mat, col) {
 }
 
 extended_tibble %>%
-  matrix_from_tibble(ratio_mean) %>%
+  tibble_to_matrix(ratio_mean) %>%
   make_decon_matrix() %>%
   deconvolute_data(
     data = filter(df_lum, cycle_nr == 100),
@@ -220,16 +220,16 @@ create_decon_matrix <- function(data,
       )
 
   extended_tibble %>%
-    matrix_from_tibble(ratio_mean) %>%
+    tibble_to_matrix(ratio_mean) %>%
     make_decon_matrix()
 }
 
 # Make Ideal Matrix -------------------------------------------------------
 
 random_extended_matrix <- function(data) {
-  matrix_e <- matrix_from_tibble(data, ratio_mean)
+  matrix_e <- tibble_to_matrix(data, ratio_mean)
 
-  matrix_sd <- matrix_from_tibble(data, ratio_sd)
+  matrix_sd <- tibble_to_matrix(data, ratio_sd)
 
   matrix_rand <- matrix(rnorm(15 * 23, 0, 1), ncol = 23)
 

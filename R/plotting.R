@@ -119,7 +119,10 @@ plot_wells_time <- function(data) {
     geom_line(aes()) +
     scale_y_log10() +
     facet_wrap(~name, ncol = 1) +
-    geom_hline(yintercept = instrument_sensitivity) +
+    geom_hline(
+      yintercept = instrument_sensitivity,
+      linetype = "dashed"
+      ) +
     theme_linedraw() +
     theme(
       strip.background = element_rect(fill = "gray30")

@@ -66,8 +66,8 @@ deconvolute_data <- function(data, decon_mat, col) {
 #'
 #' @examples
 random_extended_matrix <- function(data) {
-  matrix_e <- matrix_from_tibble(data, ratio_mean)
-  matrix_sd <- matrix_from_tibble(data, ratio_sd)
+  matrix_e <- tibble_to_matrix(data, ratio_mean)
+  matrix_sd <- tibble_to_matrix(data, ratio_sd)
   matrix_rand <- matrix(rnorm(15 * 23, 0, 1), ncol = 23)
 
   matrix_e + matrix_rand * matrix_sd
@@ -92,16 +92,13 @@ create_extended_tibble <- function(data,
                                    lum_bg_ratio_mean,
                                    lum_bg_ratio_sd
 ) {
-
   n_rows <- max(data$row)
   n_cols <- max(data$col)
 
   row_adjustment <- n_rows - calibrate_row
   col_adjustment <- n_cols - calibrate_col
 
-
   data %>%
-
     # translate the plate as required
     mutate(
       row = row + row_adjustment,
@@ -110,7 +107,8 @@ create_extended_tibble <- function(data,
 
     # fill with empty values for the other spots in extended plate
     right_join(
-      create_blank_plate(23, 15)
+      create_blank_plate(23, 15),
+      by = c("row" = "row", "col" = "col")
     ) %>%
 
     # calculate distance for all wells in extended plate
@@ -156,4 +154,31 @@ create_extended_tibble <- function(data,
       )
     ) %>%
     select(well, row, col,  ratio_mean, ratio_sd, dis)
+}
+
+#' Title
+#'
+#' @param data
+#' @param decon_mat
+#'
+#' @return
+#' @export
+#'
+#' @examples
+decon_frames <- function(data, decon_mat) {
+  data %>%
+    group_by(cycle_nr) %>%
+    nest() %>%
+    mutate(
+      adjusted = purrr::map(
+        .x = data,
+        .f = ~ deconvolute_data(
+          data = .,
+          decon_mat = decon_mat,
+          col = lum
+        )
+      )
+    ) %>%
+    select(cycle_nr, adjusted) %>%
+    unnest(adjusted)
 }

@@ -277,7 +277,7 @@ df_filled %>%
 
 # Decon matrix ------------------------------------------------------------
 
-matrix_from_tibble <- function(data, value) {
+tibble_to_matrix <- function(data, value) {
   data %>%
     select(row, col , {{ value }}) %>%
     arrange(row, col) %>%
@@ -286,7 +286,7 @@ matrix_from_tibble <- function(data, value) {
     as.matrix()
 }
 
-tibble_from_vec <- function(vec) {
+vec_to_tibble <- function(vec) {
   vec %>%
     as_tibble() %>%
     mutate(
@@ -297,15 +297,15 @@ tibble_from_vec <- function(vec) {
 
 
 matrix_mean <- df_filled %>%
-  matrix_from_tibble(mean)
+  tibble_to_matrix(mean)
 
 
 
 matrix_sd <- df_filled %>%
-  matrix_from_tibble(sd)
+  tibble_to_matrix(sd)
 
 matrix_rand <- df_filled %>%
-  matrix_from_tibble(rand)
+  tibble_to_matrix(rand)
 
 
 matrix_e <- matrix_mean + matrix_rand * matrix_sd
