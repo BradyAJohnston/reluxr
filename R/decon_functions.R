@@ -10,7 +10,7 @@
 #' @examples
 decon_col <- function(mat, rows, col = 12) {
   lapply(rows, function(x) {
-    mat[x, seq(col, col + 11)] %>%
+    mat[x, seq(col, 2 * col - 1)] %>%
       toeplitz()
   }) %>%
     do.call(rbind, .)
@@ -28,7 +28,9 @@ decon_col <- function(mat, rows, col = 12) {
 #' @examples
 make_decon_matrix <- function(mat, sample_row = 8, sample_col = 12) {
   lapply(seq(sample_row, 1), function(x) {
-    decon_col(mat, rows = seq(x, x + max(sample_row) - 1))
+    decon_col(mat,
+              rows = seq(x, x + max(sample_row) - 1),
+              col = sample_col)
   }) %>%
     do.call(cbind, .)
 }
@@ -181,4 +183,45 @@ decon_frames <- function(data, decon_mat) {
     ) %>%
     select(cycle_nr, adjusted) %>%
     unnest(adjusted)
+}
+
+
+#' Calculate Bleed-Through Dataframe
+#'
+#' @param data
+#' @param time_cutoff
+#'
+#' @return
+#' @export
+#'
+#' @examples
+calc_bleed_df <- function(data, time_cutoff = 30) {
+  time_averaged_df <- data %>%
+    group_by(cycle_nr) %>%
+    mutate(
+      ratio = lum / max(lum)
+    ) %>%
+    ungroup() %>%
+    filter(cycle_nr > time_cutoff) %>%
+    group_by(well, row, col) %>%
+    summarise(
+      ratio_mean = mean(ratio, na.rm = TRUE),
+      ratio_sd   = sd(ratio, na.rm = TRUE)
+    ) %>%
+    ungroup()
+
+  background_ratios <- time_averaged_df %>%
+    filter(col == 12) %>%
+    summarise(
+      mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
+      sd = mean(ratio_sd, na.rm = TRUE)
+    )
+
+  # print(background_ratios)
+
+  time_averaged_df %>%
+    create_extended_tibble(
+      lum_bg_ratio_mean = background_ratios$mean,
+      lum_bg_ratio_sd = background_ratios$sd
+    )
 }

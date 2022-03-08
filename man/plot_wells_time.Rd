@@ -4,7 +4,7 @@
 \alias{plot_wells_time}
 \title{Plot Well Values}
 \usage{
-plot_wells_time(data)
+plot_wells_time(data, instrument_sensitivity = 20)
 }
 \arguments{
 \item{data}{Tibble containing \code{cycle_nr}, \code{lum}, and \code{adjusted} columns.}

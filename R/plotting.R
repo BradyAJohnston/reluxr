@@ -113,7 +113,8 @@ plot_wells_comparison <- function(data) {
 #' @export
 #'
 #' @examples
-plot_wells_time <- function(data) {
+plot_wells_time <- function(data,
+                            instrument_sensitivity = 20) {
   data %>%
     ggplot(aes(cycle_nr, value, colour = name, group = well)) +
     geom_line(aes()) +
