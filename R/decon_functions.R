@@ -71,7 +71,7 @@ random_extended_matrix <- function(data) {
   matrix_e <- tibble_to_matrix(data, ratio_mean)
   matrix_sd <- tibble_to_matrix(data, ratio_sd)
   matrix_rand <- matrix(rnorm(15 * 23, 0, 1), ncol = 23)
-
+s
   matrix_e + matrix_rand * matrix_sd
   # matrix_e + rnorm(1, 0, 1) * matrix_sd
 }
@@ -213,7 +213,8 @@ calc_bleed_df <- function(data, time_cutoff = 30) {
   background_ratios <- time_averaged_df %>%
     filter(col == 12) %>%
     summarise(
-      mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
+      # mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
+      mean = mean(ratio_mean, na.rm = TRUE),
       sd = mean(ratio_sd, na.rm = TRUE)
     )
 
