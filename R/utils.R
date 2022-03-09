@@ -8,7 +8,7 @@
 #' @examples
 let_to_num <- function(x) {
   x <- stringr::str_to_upper(x)
-  as.numeric(factor(x), levels = LETTERS)
+  as.numeric(factor(x, levels = LETTERS))
 }
 
 #' Convert Number to Letter

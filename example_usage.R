@@ -3,6 +3,15 @@ library(reluxr)
 
 input_lum <- read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx")
 
+input_lum <-
+  lapply(list.files("inst/Xfiles/tecan/calibration/", full.names = TRUE),
+         read_plate) %>%
+  do.call(rbind, .) %>%
+  group_by(cycle_nr, well, col, row) %>%
+  summarise(sd = sd(lum, na.rm = TRUE),
+            lum = mean(lum, na.rm = TRUE))
+
+
 # Compute Background and Sensitivity --------------------------------------
 
 
@@ -68,7 +77,7 @@ counter <- 0
 
 working_df <- df_observed_values
 
-matrix_log <- list()
+# matrix_log <- list()
 
 while (looking_for_best) {
   counter <- counter + 1
@@ -83,7 +92,7 @@ while (looking_for_best) {
 
   rand_mat <- matrix(rnorm(n = 23 * 15, mean = 0, sd = 1), ncol = 23)
 
-  mean_rand_mat <- mean_mat + 0.1 * rand_mat * sd_mat
+  mean_rand_mat <- mean_mat + 2 * rand_mat * sd_mat
 
   matrix_D_working <- make_decon_matrix(mean_rand_mat)
 
@@ -99,10 +108,10 @@ while (looking_for_best) {
   if (FALSE %in% df_compared$compare) {
     if (counter == 1) {
       matrix_D_best <- matrix_D_working %*% diag(96)
-      matrix_log[[counter]] <- matrix_D_working
+      # matrix_log[[counter]] <- matrix_D_working
     } else {
       matrix_D_best <- matrix_D_working %*% matrix_D_best
-      matrix_log[[counter]] <- matrix_D_working
+      # matrix_log[[counter]] <- matrix_D_working
     }
   } else {
     looking_for_best <- FALSE
@@ -139,7 +148,7 @@ while (looking_for_best) {
               round(
                 sum(df_compared$compare) /
                   max(working_df$cycle_nr) /
-                  95 * 100, 3)))
+                  95 * 100, 2)))
 
 }
 
@@ -156,7 +165,8 @@ working_df %>%
 read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   decon_frames(matrix_D) %>%
   filter(cycle_nr == 100) %>%
-  plot_wells_comparison()
+  plot_wells_comparison() +
+  scale_fill_viridis_c(limits = c(0,NA))
 
 test_data <- read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   filter(cycle_nr == 100)
@@ -165,6 +175,7 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   decon_frames(matrix_D_best) %>%
   filter(cycle_nr == 100) %>%
   plot_wells_comparison() +
+  scale_fill_viridis_c(limits = c(0,NA)) +
   labs(title = "Deconvoluted with Best Kernal D Best")
 
 target_wells <- c(join_well(1:8, 5), join_well(1:8, 7), join_well(c(2, 7), 6))
@@ -227,10 +238,65 @@ lapply(list.files("inst/Xfiles/tecan/",
   decon_frames(matrix_D) %>%
   mutate(target = if_else(well %in% target_wells, "target", "background")) %>%
   pivot_longer(c(lum, adjusted)) %>%
+  mutate(name = factor(name, levels = c("lum", "adjusted"),
+                       labels = c("Raw", "Deconvoluted"))) %>%
+  filter(row == let_to_num("G")) %>%
   ggplot(aes(cycle_nr, value, colour = target, group = well)) +
   geom_line() +
-  geom_linerange(aes(ymin = value - sd, ymax = value + sd), ) +
-  # geom_point() +
+  geom_hline(yintercept = instrument_sensitivity,
+             linetype = "dashed",
+             colour = "black") +
+  geom_linerange(aes(ymin = value - sd, ymax = value + sd), alpha = 0.4) +
   scale_y_log10() +
-  facet_wrap(~name, ncol = 1)
+  facet_wrap(~name, ncol = 2) +
+  scale_x_continuous(expand = expansion()) +
+  theme_linedraw() +
+  theme(
+    strip.background = element_rect(fill = "gray40")
+  )
+
+lapply(list.files("inst/Xfiles/tecan/",
+                  pattern = "ON", full.names = TRUE),
+       read_plate) %>%
+  do.call(rbind, .) %>%
+  group_by(cycle_nr, well, col, row) %>%
+  summarise(
+    sd = sd(lum, na.rm = TRUE),
+    lum = mean(lum, na.rm = TRUE)
+  ) %>%
+  decon_frames(matrix_D_best) %>%
+  filter(cycle_nr == 120) %>%
+  plot_wells_comparison()
+
+
+
+
+lapply(list.files("inst/Xfiles/tecan/",
+                  pattern = "ON", full.names = TRUE),
+       read_plate) %>%
+  do.call(rbind, .) %>%
+  group_by(cycle_nr, well, col, row) %>%
+  summarise(
+    sd = sd(lum, na.rm = TRUE),
+    lum = mean(lum, na.rm = TRUE)
+    ) %>%
+  decon_frames(matrix_D_best) %>%
+  mutate(target = if_else(well %in% target_wells, "Signal", "Background")) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  mutate(name = factor(name, levels = c("lum", "adjusted"),
+                       labels = c("Raw", "Deconvoluted"))) %>%
+  filter(row == let_to_num("G")) %>%
+  ggplot(aes(cycle_nr, value, colour = target, group = well)) +
+  geom_line() +
+  geom_hline(yintercept = instrument_sensitivity,
+             linetype = "dashed",
+             colour = "black") +
+  geom_errorbar(aes(ymin = value - sd, ymax = value + sd), alpha = 0.4) +
+  scale_y_log10() +
+  facet_wrap(~name, ncol = 2) +
+  scale_x_continuous(expand = expansion()) +
+  theme_linedraw() +
+  theme(
+    strip.background = element_rect(fill = "gray40")
+  )
 
