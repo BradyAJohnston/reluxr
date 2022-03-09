@@ -92,7 +92,7 @@ while (looking_for_best) {
 
   rand_mat <- matrix(rnorm(n = 23 * 15, mean = 0, sd = 1), ncol = 23)
 
-  mean_rand_mat <- mean_mat + 2 * rand_mat * sd_mat
+  mean_rand_mat <- mean_mat + 0.1 * rand_mat * sd_mat
 
   matrix_D_working <- make_decon_matrix(mean_rand_mat)
 
@@ -117,7 +117,7 @@ while (looking_for_best) {
     looking_for_best <- FALSE
     beepr::beep()
 
-    matrix_D_best <- purrr::reduce(matrix_log, `%*%`)
+    # matrix_D_best <- purrr::reduce(matrix_log, `%*%`)
   }
 
   working_df <- df_adjusted %>%
@@ -151,6 +151,63 @@ while (looking_for_best) {
                   95 * 100, 2)))
 
 }
+
+working_df %>%
+  mutate(lum = if_else(lum < 0, 0, lum)) %>%
+  ggplot(aes(cycle_nr, lum , group = well)) +
+  geom_point(alpha = 0.2, colour = "gray50") +
+  geom_line(alpha = 0.3, colour = "gray50") +
+  geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
+             colour = "black") +
+  geom_line(
+    data = filter(working_df, well == join_well(5, 5)),
+    colour = "tomato",
+    size = 1
+  ) +
+
+  scale_y_log10(limits = c(1e-1, NA)) +
+  theme_classic() -> plt1
+
+df_observed_values %>%
+  ggplot(aes(cycle_nr, lum, group = well)) +
+  geom_point(alpha = 0.2, colour = "gray50") +
+  geom_line(alpha = 0.3, colour = "gray50") +
+  geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
+             colour = "black") +
+  geom_line(
+    data = filter(df_observed_values, well == join_well(5, 5)),
+    colour = "tomato",
+    size = 1
+  ) +
+  scale_y_log10(limits = c(1e-1, NA)) +
+  theme_classic() -> plt2
+
+df_observed_values %>%
+  decon_frames(matrix_D_best) %>%
+  transmute(well, cycle_nr, lum = adjusted) %>%
+  ggplot(aes(cycle_nr, lum, group = well)) +
+  geom_line(colour = "gray50", alpha = 0.3) +
+  geom_point(colour = "gray50", alpha = 0.3) +
+  scale_y_log10() +
+
+
+
+  geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
+             colour = "black") +
+  geom_line(
+    data = filter(df_observed_values, well == join_well(5, 5)),
+    colour = "tomato",
+    size = 1
+  ) +
+  scale_y_log10(limits = c(1e-1, NA)) +
+  theme_classic() -> plt3
+
+
+patchwork::wrap_plots(
+  plt2 + labs(title = "Raw"),
+  plt1 + labs(title = "Data After Optimisation"),
+  plt3 + labs(title = "Raw Data Deconvoluted with Best Kernal D")
+)
 
 stop()
 
