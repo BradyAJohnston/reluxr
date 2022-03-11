@@ -19,12 +19,12 @@ join_well <- function(row, col, num_width = 2) {
     as.character()
 }
 
-well_to_num <- function(x) {
+well_to_colnum <- function(x) {
   stringr::str_extract(x, "\\d+$") %>%
     as.numeric()
 }
 
-well_to_let <- function(x) {
+well_to_rowlet <- function(x) {
   stringr::str_extract(x, "^\\w")
 }
 

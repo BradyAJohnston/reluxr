@@ -37,8 +37,7 @@ num_to_let <- function(x) {
 #'
 #' @examples
 num_pad <- function(x, width = 2) {
-  stringr::str_pad(x, width = width, side = "left", pad = "0"
-  )
+  stringr::str_pad(x, width = width, side = "left", pad = "0")
 }
 
 # given a column number and a row (either number or letter) return the
@@ -81,7 +80,7 @@ join_well <- function(row, col, num_width = 2) {
 #' @export
 #'
 #' @examples
-well_to_num <- function(x) {
+well_to_colnum <- function(x) {
   stringr::str_extract(as.character(x), "\\d+$") %>%
     as.numeric()
 }
@@ -94,8 +93,21 @@ well_to_num <- function(x) {
 #' @export
 #'
 #' @examples
-well_to_let <- function(x) {
+well_to_rowlet <- function(x) {
   stringr::str_extract(as.character(x), "^\\w")
+}
+
+#' Convert Well ID to Row Number
+#'
+#' @param x Well ID as a string.
+#'
+#' @return Numeric row number.
+#' @export
+#'
+#' @examples
+well_to_rownum <- function(x) {
+  well_to_rowlet(x) %>%
+    let_to_num()
 }
 
 #' Calculate Distance Between Wells

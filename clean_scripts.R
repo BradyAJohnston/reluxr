@@ -23,8 +23,8 @@ df_od <-
   janitor::clean_names() %>%
   drop_na() %>%
   mutate(
-    row = well_to_let(well) %>% let_to_num(),
-    col = well_to_num(well),
+    row = well_to_rowlet(well) %>% let_to_num(),
+    col = well_to_colnum(well),
     well = join_well(LETTERS[row], col)
   )
 
@@ -41,8 +41,8 @@ df_lum <-
   janitor::clean_names() %>%
   drop_na() %>%
   mutate(
-    row = well_to_let(well) %>% let_to_num(),
-    col = well_to_num(well),
+    row = well_to_rowlet(well) %>% let_to_num(),
+    col = well_to_colnum(well),
     well = join_well(LETTERS[row], col),
     lum = as.numeric(lum),
     cycle_nr = as.numeric(cycle_nr)
@@ -407,8 +407,8 @@ sample_df <-
   janitor::clean_names() %>%
   drop_na() %>%
   mutate(
-    row = well_to_let(well) %>% let_to_num(),
-    col = well_to_num(well),
+    row = well_to_rowlet(well) %>% let_to_num(),
+    col = well_to_colnum(well),
     well = join_well(LETTERS[row], col),
     lum = as.numeric(lum),
     cycle_nr = as.numeric(cycle_nr)

@@ -17,10 +17,10 @@ read_plate <- function(path) {
       values_to = "lum"
     ) %>%
     janitor::clean_names() %>%
-    drop_na() %>%
+    tidyr::drop_na() %>%
     dplyr::mutate(
-      row = well_to_let(well) %>% let_to_num(),
-      col = well_to_num(well),
+      row = well_to_rowlet(well) %>% let_to_num(),
+      col = well_to_colnum(well),
       well = join_well(LETTERS[row], col),
       lum = as.numeric(lum),
       time_s = as.numeric(time_s),

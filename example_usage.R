@@ -67,10 +67,6 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
 
 
 
-
-
-# iterative approach ------------------------------------------------------
-
 looking_for_best <- TRUE
 
 counter <- 0
@@ -90,9 +86,10 @@ while (looking_for_best) {
   sd_mat <- bleed_df %>%
     tibble_to_matrix(ratio_sd)
 
-  rand_mat <- matrix(rnorm(n = 23 * 15, mean = 0, sd = 1), ncol = 23)
+  # rand_mat <- matrix(rnorm(n = 23 * 15, mean = 0, sd = 1), ncol = 23)
+  rand_mat <- rnorm(1, mean = 0, sd = 1)
 
-  mean_rand_mat <- mean_mat + 0.1 * rand_mat * sd_mat
+  mean_rand_mat <- mean_mat + 0.5 * rand_mat * sd_mat
 
   matrix_D_working <- make_decon_matrix(mean_rand_mat)
 
@@ -107,7 +104,7 @@ while (looking_for_best) {
 
   perc_correct <- sum(df_compared$compare) / max(working_df$cycle_nr) / 95 * 100
 
-  if (FALSE %in% df_compared$compare) {
+  if (perc_correct < 100) {
     if (counter == 1) {
       matrix_D_best <- matrix_D_working %*% diag(96)
 
@@ -120,6 +117,7 @@ while (looking_for_best) {
         matrix_log[[counter]] <- matrix_D_working
 
         old_perc_correct <- perc_correct
+
       }
     }
   } else {
@@ -145,7 +143,9 @@ while (looking_for_best) {
 
 }
 
-stop()
+
+
+
 
 
 working_df %>%
@@ -222,8 +222,6 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   plot_wells_comparison() +
   scale_fill_viridis_c(limits = c(0,NA))
 
-test_data <- read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
-  filter(cycle_nr == 100)
 
 read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   decon_frames(matrix_D_best) %>%

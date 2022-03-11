@@ -26,12 +26,12 @@ join_well <- function(row, col) {
     as.character()
 }
 
-well_to_num <- function(x) {
+well_to_colnum <- function(x) {
   stringr::str_extract(x, "\\d+$") %>%
     as.numeric()
 }
 
-well_to_let <- function(x) {
+well_to_rowlet <- function(x) {
   stringr::str_extract(x, "^\\w")
 }
 
@@ -126,8 +126,8 @@ df_od <-
   janitor::clean_names() %>%
   drop_na() %>%
   mutate(
-    row = well_to_let(well) %>% let_to_num(),
-    col = well_to_num(well),
+    row = well_to_rowlet(well) %>% let_to_num(),
+    col = well_to_colnum(well),
     well = join_well(LETTERS[row], col)
   )
 
@@ -141,8 +141,8 @@ df_lum <-
   ) %>%
   janitor::clean_names() %>%
   mutate(
-    row = well_to_let(well) %>% let_to_num(),
-    col = well_to_num(well),
+    row = well_to_rowlet(well) %>% let_to_num(),
+    col = well_to_colnum(well),
     well = join_well(LETTERS[row], col),
     lum = as.numeric(lum)
   )
@@ -190,8 +190,8 @@ df_lum <- df_lum %>%
 translated_df <- df_lum %>%
   select(cycle_nr, well, lum) %>%
   mutate(
-    row = let_to_num(well_to_let(well)) + 3,
-    col = well_to_num(well) + 7,
+    row = let_to_num(well_to_rowlet(well)) + 3,
+    col = well_to_colnum(well) + 7,
     well = join_well(LETTERS[row], col)
   )
 
