@@ -1,5 +1,5 @@
 library(reluxr)
-library(dplyr)
+library(tidyverse)
 
 input_lum <- read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx")
 
@@ -113,10 +113,10 @@ deconvolute_df_col <- function(data, mat_decon, column) {
 }
 
 
-df_observed_values %>%
-  filter(cycle_nr == 100) %>%
-  deconvolute_df_col(matrix_D_best, "lum") %>%
-  rename(adjusted = deconvoluted)
+# df_observed_values %>%
+#   filter(cycle_nr == 100) %>%
+#   deconvolute_df_col(matrix_D_best, "lum") %>%
+#   rename(adjusted = deconvoluted)
 
 
 frames_to_matrix <- function(data, value_col = "lum", time_col = "cycle_nr") {
@@ -175,13 +175,13 @@ n_rows_from_wells <- function(x) {
          "384" = 16)
 }
 
-df_observed_values %>%
-  frames_to_matrix() %>%
-  deconvolute_matrix_frames(matrix_D_best) %>%
-  matrix_to_frames_df() %>%
-  ggplot(aes(time, value, group = well)) +
-  geom_line() +
-  scale_y_log10()
+# df_observed_values %>%
+#   frames_to_matrix() %>%
+#   deconvolute_matrix_frames(matrix_D_best) %>%
+#   matrix_to_frames_df() %>%
+#   ggplot(aes(time, value, group = well)) +
+#   geom_line() +
+#   scale_y_log10()
 
 
 
@@ -301,8 +301,9 @@ while (looking_for_best) {
     tibble_to_matrix(ratio_mean)
   sd_mat <- bleed_df %>%
     tibble_to_matrix(ratio_sd)
+  # rand_mat <- matrix(rnorm(23 * 15, 0, 1), ncol = 23)
   rand_mat <- rnorm(1, mean = 0, sd = 1)
-  mean_rand_mat <- mean_mat + 0.5 * rand_mat * sd_mat
+  mean_rand_mat <- mean_mat + 0.1 * rand_mat * sd_mat
   matrix_D_working <- make_decon_matrix(mean_rand_mat)
 
   adjusted_df <- working_df %>%
@@ -347,5 +348,212 @@ while (looking_for_best) {
               ", percent:",
               round(old_perc_correct, 2)))
 }
+
+
+working_df %>%
+  mutate(lum = if_else(lum < 0, 0, lum)) %>%
+  ggplot(aes(cycle_nr, lum , group = well)) +
+  geom_point(alpha = 0.2, colour = "gray50") +
+  geom_line(alpha = 0.3, colour = "gray50") +
+  geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
+             colour = "black") +
+  geom_line(
+    data = filter(working_df, well == join_well(5, 5)),
+    colour = "tomato",
+    size = 1
+  ) +
+
+  scale_y_log10(limits = c(1e-1, NA)) +
+  theme_classic() -> plt1
+
+df_observed_values %>%
+  ggplot(aes(cycle_nr, lum, group = well)) +
+  geom_point(alpha = 0.2, colour = "gray50") +
+  geom_line(alpha = 0.3, colour = "gray50") +
+  geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
+             colour = "black") +
+  geom_line(
+    data = filter(df_observed_values, well == join_well(5, 5)),
+    colour = "tomato",
+    size = 1
+  ) +
+  scale_y_log10(limits = c(1e-1, NA)) +
+  theme_classic() -> plt2
+
+df_observed_values %>%
+  decon_frames(matrix_D_best) %>%
+  transmute(well, cycle_nr, lum = adjusted) %>%
+  ggplot(aes(cycle_nr, lum, group = well)) +
+  geom_line(colour = "gray50", alpha = 0.3) +
+  geom_point(colour = "gray50", alpha = 0.3) +
+  scale_y_log10() +
+
+
+
+  geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
+             colour = "black") +
+  geom_line(
+    data = filter(df_observed_values, well == join_well(5, 5)),
+    colour = "tomato",
+    size = 1
+  ) +
+  scale_y_log10(limits = c(1e-1, NA)) +
+  theme_classic() -> plt3
+
+
+patchwork::wrap_plots(
+  plt2 + labs(title = "Raw"),
+  plt1 + labs(title = "Data After Optimisation"),
+  plt3 + labs(title = "Raw Data Deconvoluted with Best Kernal D")
+)
+
+stop()
+
+
+working_df %>%
+  filter(well != join_well(5, 5)) %>%
+  ggplot(aes(cycle_nr, lum)) +
+  geom_line(aes(group = well)) +
+  geom_hline(yintercept = instrument_sensitivity, colour = "tomato",
+             linetype = "dashed")
+
+
+read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
+  decon_frames(matrix_D) %>%
+  filter(cycle_nr == 100) %>%
+  plot_wells_comparison() +
+  scale_fill_viridis_c(limits = c(0,NA))
+
+
+read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
+  decon_frames(matrix_D_best) %>%
+  filter(cycle_nr == 100) %>%
+  plot_wells_comparison() +
+  scale_fill_viridis_c(limits = c(0,NA)) +
+  labs(title = "Deconvoluted with Best Kernal D Best")
+
+target_wells <- c(join_well(1:8, 5), join_well(1:8, 7), join_well(c(2, 7), 6))
+
+read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx") %>%
+  decon_frames(matrix_D_best) %>%
+  filter(cycle_nr == 107) %>%
+  mutate(adjusted = if_else(adjusted < instrument_sensitivity, 0, adjusted)) %>%
+  plot_wells(adjusted, log10_fill = TRUE) +
+  geom_text(aes(label = round(log10(adjusted), 2))) +
+  scale_fill_viridis_c(limits = c(0, NA))
+
+read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx") %>%
+  decon_frames(matrix_D_best) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  plot_wells_time()
+
+read_plate("inst/Xfiles/tecan/tecanOFF1.xlsx") %>%
+  decon_frames(matrix_D_best) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  plot_wells_time()
+
+read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
+  decon_frames(matrix_D) %>%
+  mutate(target = if_else(well %in% target_wells, "target", "background")) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  ggplot(aes(cycle_nr, value, colour = target, group = well)) +
+  geom_line(size = 0.7) +
+  facet_wrap(~name, ncol = 1) +
+  scale_y_log10() +
+  theme_classic() +
+  geom_hline(yintercept = instrument_sensitivity, linetype = "dashed")
+
+lapply(list.files("inst/Xfiles/tecan/",
+                  pattern = "ON", full.names = TRUE),
+       read_plate) %>%
+  do.call(rbind, .) %>%
+  group_by(cycle_nr, well, col, row) %>%
+  summarise(
+    sd = sd(lum, na.rm = TRUE),
+    lum = mean(lum, na.rm = TRUE)
+  ) %>%
+  decon_frames(matrix_D_best) %>%
+  mutate(target = if_else(well %in% target_wells, "target", "background")) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  ggplot(aes(cycle_nr, value, colour = target, group = well)) +
+  geom_line() +
+  geom_linerange(aes(ymin = value - sd, ymax = value + sd), ) +
+  # geom_point() +
+  scale_y_log10() +
+  facet_wrap(~name, ncol = 1)
+
+lapply(list.files("inst/Xfiles/tecan/",
+                  pattern = "ON", full.names = TRUE),
+       read_plate) %>%
+  do.call(rbind, .) %>%
+  group_by(cycle_nr, well, col, row) %>%
+  summarise(
+    sd = sd(lum, na.rm = TRUE),
+    lum = mean(lum, na.rm = TRUE)
+  ) %>%
+  decon_frames(matrix_D) %>%
+  mutate(target = if_else(well %in% target_wells, "target", "background")) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  mutate(name = factor(name, levels = c("lum", "adjusted"),
+                       labels = c("Raw", "Deconvoluted"))) %>%
+  filter(row == let_to_num("G")) %>%
+  ggplot(aes(cycle_nr, value, colour = target, group = well)) +
+  geom_line() +
+  geom_hline(yintercept = instrument_sensitivity,
+             linetype = "dashed",
+             colour = "black") +
+  geom_linerange(aes(ymin = value - sd, ymax = value + sd), alpha = 0.4) +
+  scale_y_log10() +
+  facet_wrap(~name, ncol = 2) +
+  scale_x_continuous(expand = expansion()) +
+  theme_linedraw() +
+  theme(
+    strip.background = element_rect(fill = "gray40")
+  )
+
+lapply(list.files("inst/Xfiles/tecan/",
+                  pattern = "ON", full.names = TRUE),
+       read_plate) %>%
+  do.call(rbind, .) %>%
+  group_by(cycle_nr, well, col, row) %>%
+  summarise(
+    sd = sd(lum, na.rm = TRUE),
+    lum = mean(lum, na.rm = TRUE)
+  ) %>%
+  decon_frames(matrix_D_best) %>%
+  filter(cycle_nr == 120) %>%
+  plot_wells_comparison()
+
+
+
+
+lapply(list.files("inst/Xfiles/tecan/",
+                  pattern = "ON", full.names = TRUE),
+       read_plate) %>%
+  do.call(rbind, .) %>%
+  group_by(cycle_nr, well, col, row) %>%
+  summarise(
+    sd = sd(lum, na.rm = TRUE),
+    lum = mean(lum, na.rm = TRUE)
+  ) %>%
+  decon_frames(matrix_D_best) %>%
+  mutate(target = if_else(well %in% target_wells, "Signal", "Background")) %>%
+  pivot_longer(c(lum, adjusted)) %>%
+  mutate(name = factor(name, levels = c("lum", "adjusted"),
+                       labels = c("Raw", "Deconvoluted"))) %>%
+  filter(row == let_to_num("G")) %>%
+  ggplot(aes(cycle_nr, value, colour = target, group = well)) +
+  geom_line() +
+  geom_hline(yintercept = instrument_sensitivity,
+             linetype = "dashed",
+             colour = "black") +
+  geom_errorbar(aes(ymin = value - sd, ymax = value + sd), alpha = 0.4) +
+  scale_y_log10() +
+  facet_wrap(~name, ncol = 2) +
+  scale_x_continuous(expand = expansion()) +
+  theme_linedraw() +
+  theme(
+    strip.background = element_rect(fill = "gray40")
+  )
 
 
