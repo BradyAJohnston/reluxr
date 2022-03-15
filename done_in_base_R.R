@@ -132,7 +132,7 @@ frames_to_matrix <- function(data, value_col = "lum", time_col = "cycle_nr") {
      as.matrix()
 }
 
-mat_values <- frames_to_matrix(df_observed_values)
+# mat_values <- frames_to_matrix(df_observed_values)
 
 deconvolute_matrix_frames <- function(mat, mat_decon) {
   lapply(seq(nrow(mat_values)), function(x) {
@@ -187,7 +187,7 @@ n_rows_from_wells <- function(x) {
 
 
 
-dis_mat <- calc_dis_matrix(mat)
+# dis_mat <- calc_dis_matrix(mat)
 
 mean_dis_mat <- function(data) {
   unique_dis <- unique(data$dis)
@@ -260,13 +260,13 @@ df_observed_values %>%
   calc_dis_df(calibrate_row = 8, calibrate_col = 12) %>%
   mean_dis_mat() %>%
   plot_wells(value)
-
-mat %>%
-  matrix_to_df() %>%
-  translate_df_wells() %>%
-  calc_dis_df() %>%
-  # mean_dis_mat() %>%
-  plot_wells(value)
+#
+# mat %>%
+#   matrix_to_df() %>%
+#   translate_df_wells() %>%
+#   calc_dis_df() %>%
+#   # mean_dis_mat() %>%
+#   plot_wells(value)
 
 
 test_fun <- function() {
@@ -279,10 +279,18 @@ test_fun <- function() {
 }
 test_fun()
 
-working_df %>%
-  frames_to_matrix() %>%
-  deconvolute_matrix_frames(matrix_D_working) %>%
-  matrix_to_frames_df()
+
+deconvolute_df_frames <- function(data, column, mat_decon) {
+  deconvoluted_data <- data %>%
+    frames_to_matrix("lum") %>%
+    deconvolute_matrix_frames(mat_decon) %>%
+    matrix_to_frames_df()
+
+  data$adjusted <- deconvoluted_data$value
+  data
+}
+
+
 
 looking_for_best <- TRUE
 
@@ -296,45 +304,59 @@ lower_log <- c()
 while (looking_for_best) {
   counter <- counter + 1
   bleed_df <- calc_bleed_df(working_df, time_cutoff = 50)
-
   mean_mat <- bleed_df %>%
     tibble_to_matrix(ratio_mean)
   sd_mat <- bleed_df %>%
     tibble_to_matrix(ratio_sd)
   # rand_mat <- matrix(rnorm(23 * 15, 0, 1), ncol = 23)
-  rand_mat <- rnorm(1, mean = 0, sd = 1)
-  mean_rand_mat <- mean_mat + 0.1 * rand_mat * sd_mat
+  # rand_mat <- rnorm(1, mean = 0, sd = 1)
+
+  mean_rand_mat <- mean_mat + 0.1 * rnorm(1, 0, 1) * sd_mat
+
   matrix_D_working <- make_decon_matrix(mean_rand_mat)
 
   adjusted_df <- working_df %>%
-    frames_to_matrix() %>%
-    deconvolute_matrix_frames(matrix_D_working) %>%
-    matrix_to_frames_df()
+    deconvolute_df_frames("lum", matrix_D_working)
 
-  adjusted_values <- adjusted_df[adjusted_df$well != join_well(5, 5), ]$value
-  compared_values <- working_df$lum - instrument_sensitivity < 0
+  adjusted_values <- adjusted_df[adjusted_df$well != join_well(5, 5), ]$adjusted
 
-  perc_correct <- sum(compared_values) / 120 / 95 * 100
+  compared_values <- adjusted_values - instrument_sensitivity < 0
+
+  perc_correct <- sum(compared_values) / max(adjusted_df$cycle_nr) / 95 * 100
+
 
   if (perc_correct < 100) {
     if (counter == 1) {
+
       matrix_D_best <- matrix_D_working %*% diag(96)
       matrix_log[[counter]] <- matrix_D_working
       old_perc_correct <- perc_correct
+
+
     } else {
+
       if (perc_correct > old_perc_correct) {
+
         matrix_D_best <- matrix_D_working %*% matrix_D_best
         lower_log <- c(lower_log, counter)
         old_perc_correct <- perc_correct
+
       }
+
       matrix_log[[counter]] <- matrix_D_working
+
     }
   } else {
     looking_for_best <- FALSE
     beepr::beep()
   }
 
-  working_df <- df_adjusted %>%
+  # working_df$lum <- ifelse(
+  #   adjusted_df$adjusted < adjusted_df$lum | adjusted_df$adjusted <= 0,
+  #   adjusted_df$adjusted,
+  #   adjusted_df$lum
+  # )
+  working_df <- adjusted_df %>%
     mutate(
       lum = if_else(
         adjusted < lum | adjusted <= 0,
@@ -344,10 +366,15 @@ while (looking_for_best) {
     ) %>%
     select(-adjusted)
 
+
+
   print(paste("Iteration", counter,
               ", percent:",
-              round(old_perc_correct, 2)))
+              round(perc_correct, 2)))
 }
+
+
+
 
 
 working_df %>%

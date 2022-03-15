@@ -75,6 +75,8 @@ working_df <- df_observed_values
 
 matrix_log <- list()
 
+update_timer <- 0
+
 while (looking_for_best) {
   counter <- counter + 1
 
@@ -89,7 +91,7 @@ while (looking_for_best) {
   # rand_mat <- matrix(rnorm(n = 23 * 15, mean = 0, sd = 1), ncol = 23)
   rand_mat <- rnorm(1, mean = 0, sd = 1)
 
-  mean_rand_mat <- mean_mat + 0.5 * rand_mat * sd_mat
+  mean_rand_mat <- mean_mat + (update_timer / 50) * rand_mat * sd_mat
 
   matrix_D_working <- make_decon_matrix(mean_rand_mat)
 
@@ -110,6 +112,17 @@ while (looking_for_best) {
 
       matrix_log[[counter]] <- matrix_D_working
       old_perc_correct <- perc_correct
+  working_df <- df_adjusted %>%
+    mutate(
+      lum = if_else(
+        adjusted < lum | adjusted <= 0,
+        adjusted,
+        lum
+      )
+    ) %>%
+    select(-adjusted)
+
+  update_timer <- 0
     } else {
       if (perc_correct > old_perc_correct) {
         matrix_D_best <- matrix_D_working %*% matrix_D_best
@@ -117,15 +130,6 @@ while (looking_for_best) {
         matrix_log[[counter]] <- matrix_D_working
 
         old_perc_correct <- perc_correct
-
-      }
-    }
-  } else {
-    looking_for_best <- FALSE
-    beepr::beep()
-
-    # matrix_D_best <- purrr::reduce(matrix_log, `%*%`)
-  }
 
   working_df <- df_adjusted %>%
     mutate(
@@ -137,9 +141,23 @@ while (looking_for_best) {
     ) %>%
     select(-adjusted)
 
+  update_timer <- 0
+      }
+    }
+  } else {
+    looking_for_best <- FALSE
+    beepr::beep()
+
+    # matrix_D_best <- purrr::reduce(matrix_log, `%*%`)
+  }
+
+  update_timer <- update_timer + 1
+
   print(paste("Iteration", counter,
               ", percent:",
-              round(old_perc_correct, 2)))
+              round(old_perc_correct, 2),
+              "update timer:",
+              update_timer))
 
 }
 
@@ -225,7 +243,7 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
 
 read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   decon_frames(matrix_D_best) %>%
-  filter(cycle_nr == 100) %>%
+  filter(cycle_nr == 120) %>%
   plot_wells_comparison() +
   scale_fill_viridis_c(limits = c(0,NA)) +
   labs(title = "Deconvoluted with Best Kernal D Best")
@@ -261,7 +279,7 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   theme_classic() +
   geom_hline(yintercept = instrument_sensitivity, linetype = "dashed")
 
-lapply(list.files("inst/Xfiles/tecan/",
+frames_comp <- lapply(list.files("inst/Xfiles/tecan/",
                   pattern = "ON", full.names = TRUE),
        read_plate) %>%
   do.call(rbind, .) %>%
@@ -273,12 +291,17 @@ lapply(list.files("inst/Xfiles/tecan/",
   decon_frames(matrix_D_best) %>%
   mutate(target = if_else(well %in% target_wells, "target", "background")) %>%
   pivot_longer(c(lum, adjusted)) %>%
+  mutate(name = factor(name, levels = c("lum", "adjusted"), labels = c("Raw", "Deconvoluted"))) %>%
   ggplot(aes(cycle_nr, value, colour = target, group = well)) +
   geom_line() +
   geom_linerange(aes(ymin = value - sd, ymax = value + sd), ) +
   # geom_point() +
   scale_y_log10() +
-  facet_wrap(~name, ncol = 1)
+  facet_wrap(~name, ncol = 2) +
+  theme_light() +
+  geom_hline(yintercept = instrument_sensitivity, linetype = "dashed") +
+  labs(subtitle = "All Frames")
+  NULL
 
 lapply(list.files("inst/Xfiles/tecan/",
                   pattern = "ON", full.names = TRUE),
@@ -309,7 +332,7 @@ lapply(list.files("inst/Xfiles/tecan/",
     strip.background = element_rect(fill = "gray40")
   )
 
-lapply(list.files("inst/Xfiles/tecan/",
+wells_comp <- lapply(list.files("inst/Xfiles/tecan/",
                   pattern = "ON", full.names = TRUE),
        read_plate) %>%
   do.call(rbind, .) %>%
@@ -320,7 +343,20 @@ lapply(list.files("inst/Xfiles/tecan/",
   ) %>%
   decon_frames(matrix_D_best) %>%
   filter(cycle_nr == 120) %>%
-  plot_wells_comparison()
+  mutate(
+    adjusted = if_else(adjusted < instrument_sensitivity, 0, adjusted)
+  ) %>%
+  mutate(target = if_else(well %in% target_wells, "target", "background")) %>%
+  plot_wells_comparison() +
+  labs(subtitle = "Last Frame",
+       title = "") +
+  aes(colour = target)
+
+patchwork::wrap_plots(frames_comp, wells_comp, ncol = 1) +
+  patchwork::plot_annotation(
+    title = "Deconvoluted with Kernal D Best",
+    theme = theme(plot.title.position = "plot")
+  )
 
 
 
@@ -338,8 +374,8 @@ lapply(list.files("inst/Xfiles/tecan/",
   mutate(target = if_else(well %in% target_wells, "Signal", "Background")) %>%
   pivot_longer(c(lum, adjusted)) %>%
   mutate(name = factor(name, levels = c("lum", "adjusted"),
-                       labels = c("Raw", "Deconvoluted"))) %>%
-  filter(row == let_to_num("G")) %>%
+                       labels = c("Raw", "Deconvoluted")))
+  # filter(row == let_to_num("G")) %>%
   ggplot(aes(cycle_nr, value, colour = target, group = well)) +
   geom_line() +
   geom_hline(yintercept = instrument_sensitivity,
