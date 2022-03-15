@@ -390,3 +390,29 @@ lapply(list.files("inst/Xfiles/tecan/",
     strip.background = element_rect(fill = "gray40")
   )
 
+
+  multi_plate_read <- function(dir, pattern) {
+    lapply(
+      list.files(
+        path = dir,
+        pattern = pattern,
+        full.names = TRUE
+      ),
+      read_plate
+    ) %>%
+      do.call(rbind, .) %>%
+      group_by(cycle_nr, well, col, row) %>%
+      summarise(
+        sd = sd(lum, na.rm = TRUE),
+        lum = mean(lum, na.rm = TRUE)
+      )
+  }
+
+
+
+  multi_plate_read("inst/Xfiles/tecan/", "OFF") %>%
+    decon_frames(matrix_D_best) %>%
+    filter(cycle_nr == 120) %>%
+    plot_wells(adjusted) +
+    # plot_wells(lum)
+    scale_fill_viridis_c(limits = c(0,NA))
