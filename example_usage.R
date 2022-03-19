@@ -75,7 +75,7 @@ working_df <- df_observed_values
 
 matrix_log <- list()
 
-update_timer <- 0
+update_timer <- 1
 
 while (looking_for_best) {
   counter <- counter + 1

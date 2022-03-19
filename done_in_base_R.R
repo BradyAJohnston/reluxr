@@ -76,9 +76,12 @@ reorder_df_by_wells <- function(data) {
 }
 
 make_empty_plate <- function(nrow = 8, ncol = 12) {
+  if (length(nrow) == 1) nrow <- seq(nrow)
+  if (length(ncol) == 1) ncol <- seq(ncol)
+
   plate <- expand.grid(
-    col = seq(ncol),
-    row = seq(nrow)
+    col = ncol,
+    row = nrow
   )[, c("row", "col")]
   plate$well <- join_well(plate$row, plate$col)
   plate
@@ -385,7 +388,7 @@ while (looking_for_best) {
 
   print(paste("Iteration", counter,
               ", percent:",
-              round(perc_correct, 2)))
+              round(old_perc_correct, 2)))
 }
 
 
@@ -473,6 +476,48 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   plot_wells_comparison() +
   scale_fill_viridis_c(limits = c(0,NA)) +
   labs(title = "Deconvoluted with Best Kernal D Best")
+
+
+read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
+  decon_frames(matrix_D_best) %>%
+  filter(cycle_nr == 100) %>%
+  pivot_longer(c(lum, adjusted), values_to = "lum") %>%
+
+  ggplot(aes(col, row)) +
+  geom_tile(
+    aes(fill = log10(lum),
+        # alpha = sqrt(log10(lum))
+        ),
+    colour = "gray20"
+    ) +
+  guides(alpha = "none") +
+  # scale_alpha_continuous(
+  #
+  # ) +
+  scale_fill_viridis_c(
+    option = "A",
+    na.value = "gray50",
+    direction = 1,
+    limits = c(1, NA)
+    ) +
+  coord_fixed() +
+  scale_x_continuous(
+    expand = expansion(),
+    breaks = 1:100,
+    position = "top"
+  ) +
+  scale_y_reverse(
+    expand = expansion(),
+    breaks = 1:12
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    panel.background = element_rect(fill = "gray50"),
+    panel.border = element_rect(colour = "gray20", fill = NA,
+                                size = 1)
+  ) +
+  facet_wrap(~name, strip.position = "bottom")
 
 target_wells <- c(join_well(1:8, 5), join_well(1:8, 7), join_well(c(2, 7), 6))
 
