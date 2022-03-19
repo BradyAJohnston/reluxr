@@ -15,27 +15,39 @@ plot_wells <- function(data, fill, log10_fill = TRUE) {
   if (log10_fill) {
     plt <- plt +
       ggplot2::geom_tile(
-        ggplot2::aes(fill = log10( {{ fill }})),
-        alpha = 0.9,
+        ggplot2::aes(
+          fill = log10({{ fill }}),
+          alpha = log10({{ fill }})
+          ),
         colour = "gray30"
       )
 
   } else {
     plt <- plt +
       ggplot2::geom_tile(
-        ggplot2::aes(fill = {{ fill }}),
-        alpha = 0.9,
+        ggplot2::aes(
+          fill = {{ fill }},
+          alpha = {{ fill }}
+          ),
         colour = "gray30"
       )
   }
 
   plt +
-    ggplot2::scale_fill_viridis_c(breaks = scales::pretty_breaks())  +
+    ggplot2::guides(alpha = "none") +
+    ggplot2::scale_fill_viridis_c(
+      breaks = scales::pretty_breaks(),
+      na.value = "white"
+      )  +
     ggplot2::scale_x_continuous(
       name = NULL,
       expand = ggplot2::expansion(),
       breaks = 1:23,
       position = "top"
+    ) +
+    ggplot2::scale_alpha_continuous(
+      limits = c(0, NA),
+      range = c(0.1, 1)
     ) +
     ggplot2::scale_y_reverse(
       name = NULL,
@@ -47,6 +59,7 @@ plot_wells <- function(data, fill, log10_fill = TRUE) {
     ggplot2::theme(
       aspect.ratio = 15 / 23,
       panel.grid = ggplot2::element_blank(),
+      panel.background = ggplot2::element_rect(fill = "white"),
       axis.text.y = ggplot2::element_text(hjust = 0.5),
       legend.title = ggplot2::element_text(size = 10),
       axis.ticks = ggplot2::element_blank()
