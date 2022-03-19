@@ -135,9 +135,9 @@ frames_to_matrix <- function(data, value_col = "lum", time_col = "cycle_nr") {
 # mat_values <- frames_to_matrix(df_observed_values)
 
 deconvolute_matrix_frames <- function(mat, mat_decon) {
-  lapply(seq(nrow(mat_values)), function(x) {
+  lapply(seq(nrow(mat)), function(x) {
     deconvolute_vector(
-      vec = mat_values[x, ],
+      vec = mat[x, ],
       mat_decon = mat_decon
         )
   }) %>%
@@ -300,6 +300,7 @@ working_df <- df_observed_values
 
 matrix_log <- list()
 lower_log <- c()
+update_timer <- 1
 
 while (looking_for_best) {
   counter <- counter + 1
@@ -311,7 +312,7 @@ while (looking_for_best) {
   # rand_mat <- matrix(rnorm(23 * 15, 0, 1), ncol = 23)
   # rand_mat <- rnorm(1, mean = 0, sd = 1)
 
-  mean_rand_mat <- mean_mat + 0.1 * rnorm(1, 0, 1) * sd_mat
+  mean_rand_mat <- mean_mat + (update_timer / 50) * rnorm(1, 0, 1) * sd_mat
 
   matrix_D_working <- make_decon_matrix(mean_rand_mat)
 
@@ -333,17 +334,39 @@ while (looking_for_best) {
       old_perc_correct <- perc_correct
 
 
+      working_df <- adjusted_df %>%
+        mutate(
+          lum = if_else(
+            adjusted < lum | adjusted <= 0,
+            adjusted,
+            lum
+          )
+        ) %>%
+        select(-adjusted)
+
+      update_timer <- 0
     } else {
 
       if (perc_correct > old_perc_correct) {
 
         matrix_D_best <- matrix_D_working %*% matrix_D_best
         lower_log <- c(lower_log, counter)
-        old_perc_correct <- perc_correct
-
-      }
 
       matrix_log[[counter]] <- matrix_D_working
+
+      working_df <- adjusted_df %>%
+        mutate(
+          lum = if_else(
+            adjusted < lum | adjusted <= 0,
+            adjusted,
+            lum
+          )
+        ) %>%
+        select(-adjusted)
+
+      update_timer <- 0
+      old_perc_correct <- perc_correct
+      }
 
     }
   } else {
@@ -356,15 +379,7 @@ while (looking_for_best) {
   #   adjusted_df$adjusted,
   #   adjusted_df$lum
   # )
-  working_df <- adjusted_df %>%
-    mutate(
-      lum = if_else(
-        adjusted < lum | adjusted <= 0,
-        adjusted,
-        lum
-      )
-    ) %>%
-    select(-adjusted)
+  update_timer <- update_timer + 1
 
 
 
