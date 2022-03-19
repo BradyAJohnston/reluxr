@@ -13,8 +13,8 @@ update_frames <- function(old_mat, new_mat) {
 
 
 well_to_index <- function(well, n_wells = 96) {
-  col <- well_to_num(well)
-  row <- well_to_let(well) %>% let_to_num()
+  col <- reluxr::well_to_colnum(well)
+  row <- reluxr::well_to_rownum(well)
 
   index <- (row - 1) * n_cols_from_wells(n_wells) + col
   index
@@ -128,4 +128,4 @@ calc_matrix_D_best <- function(data) {
 }
 
 
-matriX_D_best <- calc_matrix_D_best(df_observed_values)
+# matriX_D_best <- calc_matrix_D_best(df_observed_values)
