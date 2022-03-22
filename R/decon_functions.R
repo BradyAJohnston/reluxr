@@ -109,7 +109,10 @@ create_extended_tibble <- function(data,
 
     # fill with empty values for the other spots in extended plate
     right_join(
-      create_blank_plate(23, 15),
+      create_blank_plate(
+        n_rows = 2 * n_rows - 1,
+        n_cols = 2 * n_cols - 1
+        ),
       by = c("row" = "row", "col" = "col")
     ) %>%
 
@@ -190,12 +193,18 @@ decon_frames <- function(data, decon_mat) {
 #'
 #' @param data
 #' @param time_cutoff
+#' @param calibrate_row
+#' @param calibrate_col
 #'
 #' @return
 #' @export
 #'
 #' @examples
-calc_bleed_df <- function(data, time_cutoff = 30) {
+calc_bleed_df <- function(data,
+                          time_cutoff = 30,
+                          calibrate_row = 5,
+                          calibrate_col = 5
+                          ) {
   time_averaged_df <- data %>%
     group_by(cycle_nr) %>%
     mutate(
@@ -213,7 +222,6 @@ calc_bleed_df <- function(data, time_cutoff = 30) {
   background_ratios <- time_averaged_df %>%
     filter(col == 12) %>%
     summarise(
-      # mean = mean(if_else(ratio_mean < 0, 0, ratio_mean), na.rm = TRUE),
       mean = mean(ratio_mean, na.rm = TRUE),
       sd = mean(ratio_sd, na.rm = TRUE)
     )
@@ -223,6 +231,8 @@ calc_bleed_df <- function(data, time_cutoff = 30) {
   time_averaged_df %>%
     create_extended_tibble(
       lum_bg_ratio_mean = background_ratios$mean,
-      lum_bg_ratio_sd = background_ratios$sd
+      lum_bg_ratio_sd = background_ratios$sd,
+      calibrate_row = calibrate_row,
+      calibrate_col = calibrate_col
     )
 }

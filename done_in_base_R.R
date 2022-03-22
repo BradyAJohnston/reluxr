@@ -11,7 +11,8 @@ input_lum <-
   do.call(rbind, .) %>%
   group_by(cycle_nr, well, col, row) %>%
   summarise(sd = sd(lum, na.rm = TRUE),
-            lum = mean(lum, na.rm = TRUE))
+            lum = mean(lum, na.rm = TRUE),
+            .groups = "keep")
 
 
 # Compute Background and Sensitivity --------------------------------------
@@ -39,8 +40,53 @@ matrix_D_best <- calc_matrix_D_best(
   instrument_sensitivity = instrument_sensitivity
   )
 
-
 stop()
+
+calc_best <- function(data, instrument_sensitivity = 20) {
+  results <- list(
+    mat = calc_matrix_D_best(
+      data = data,
+      instrument_sensitivity = instrument_sensitivity
+      ),
+    plate_size = 96,
+    iterations = 184
+    )
+
+  class(results) <-  "plate"
+  results
+}
+
+
+out_best_results <- calc_best(df_observed_values, instrument_sensitivity)
+
+
+
+print.plate <- function(x, ...) {
+  print(x["mat"])
+}
+
+plot.plate <- function(x, ...) {
+  mat <- x[["mat"]]
+  # mat %>%
+  #   matrix_to_tibble() %>%
+  #   plot_wells(value) +
+  #   ggplot2::coord_fixed() +
+  #   ggplot2::theme_void() +
+  #   ggplot2::guides(fill = "none")
+  image(log10(mat[seq(nrow(mat), 1), ]),
+        xaxt = "n", yaxt = "n",
+        bty = "n", ...)
+}
+
+plot(out_best_results, asp = 1)
+
+summary.plate <- function (object, ...) {
+  cat(
+    "Deconvolution matrix for a", object[["plate_size"]], "well plate."
+  )
+}
+
+summary(out_best_results)
 
 read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   deconvolute_df_frames(lum, matrix_D_best) %>%
@@ -65,9 +111,11 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   ggplot(aes(col, row)) +
   geom_tile(
     aes(fill = log10(lum),
-        # alpha = sqrt(log10(lum))
+        alpha = sqrt(log10(lum))
         ),
-    colour = "gray20"
+    # colour = "gray80",
+    width = 0.9,
+    height = 0.9
     ) +
   guides(alpha = "none") +
   # scale_alpha_continuous(
@@ -75,7 +123,7 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   # ) +
   scale_fill_viridis_c(
     option = "A",
-    na.value = "gray50",
+    na.value = alpha("black", 0.1),
     direction = 1,
     limits = c(1, NA)
     ) +
@@ -92,13 +140,13 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   theme_minimal() +
   theme(
     panel.grid = element_blank(),
-    panel.background = element_rect(fill = "gray50"),
+    panel.background = element_rect(fill = "gray"),
     panel.border = element_rect(colour = "gray20", fill = NA,
                                 size = 1)
   ) +
   facet_wrap(~name, strip.position = "bottom")
 
-target_wells <- c(join_well(1:8, 5), join_well(1:8, 7), join_well(c(2, 7), 6))
+target_wells <- c(well_join(1:8, 5), well_join(1:8, 7), well_join(c(2, 7), 6))
 
 read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx") %>%
   decon_frames(matrix_D_best) %>%

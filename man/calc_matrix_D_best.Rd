@@ -4,7 +4,12 @@
 \alias{calc_matrix_D_best}
 \title{Title}
 \usage{
-calc_matrix_D_best(data, value_col, instrument_sensitivity = 20)
+calc_matrix_D_best(
+  data,
+  value_col,
+  calibration_well = "E05",
+  instrument_sensitivity = 20
+)
 }
 \arguments{
 \item{value_col}{Column that contains observed values for creation of the

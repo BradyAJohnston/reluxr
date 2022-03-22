@@ -68,7 +68,7 @@ matrix_to_tibble <- function(mat, value_col = "value") {
     dplyr::transmute(
       row = as.numeric(row),
       col = as.numeric(col),
-      well = join_well(row, col),
+      well = well_join(row, col),
       value = as.numeric(value)
     )
 }

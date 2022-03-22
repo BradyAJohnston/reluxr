@@ -21,7 +21,7 @@ read_plate <- function(path) {
     dplyr::mutate(
       row = well_to_rownum(well),
       col = well_to_colnum(well),
-      well = join_well(row, col),
+      well = well_join(row, col),
       lum = as.numeric(lum),
       time_s = as.numeric(time_s),
       cycle_nr = as.numeric(cycle_nr)

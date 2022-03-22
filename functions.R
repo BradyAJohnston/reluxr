@@ -11,7 +11,7 @@ num_pad <- function(x, width = 2) {
 
 # given a column number and a row (either number or letter) return the
 # 3-character well that is joined from the two
-join_well <- function(row, col, num_width = 2) {
+well_join <- function(row, col, num_width = 2) {
   if (is.numeric(row)) {
     row <- LETTERS[row]
   }

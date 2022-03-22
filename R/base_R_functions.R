@@ -102,7 +102,7 @@ make_empty_plate <- function(nrow = 8, ncol = 12) {
     col = ncol,
     row = nrow
   )[, c("row", "col")]
-  plate$well <- join_well(plate$row, plate$col)
+  plate$well <- well_join(plate$row, plate$col)
   plate
 }
 
@@ -293,7 +293,7 @@ translate_df_wells <- function(data,
 
   data$row <- data$row + row_adjustment
   data$col <- data$col + col_adjustment
-  data$well <- join_well(row = data$row, col = data$col)
+  data$well <- well_join(row = data$row, col = data$col)
 
   empty_plate <- make_empty_plate(
     nrow = 2 * n_rows - 1,

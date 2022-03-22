@@ -56,7 +56,7 @@ num_pad <- function(x, width = 2) {
 #' @export
 #'
 #' @examples
-join_well <- function(row, col, num_width = 2) {
+well_join <- function(row, col, num_width = 2) {
   if (is.character(row)) {
     if(stringr::str_detect(row, "\\d")) {
       row <- as.numeric(row)

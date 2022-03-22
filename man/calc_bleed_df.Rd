@@ -4,10 +4,10 @@
 \alias{calc_bleed_df}
 \title{Calculate Bleed-Through Dataframe}
 \usage{
-calc_bleed_df(data, time_cutoff = 30)
+calc_bleed_df(data, time_cutoff = 30, calibrate_row = 5, calibrate_col = 5)
 }
 \arguments{
-\item{time_cutoff}{}
+\item{calibrate_col}{}
 }
 \value{
 

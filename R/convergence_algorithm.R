@@ -57,7 +57,11 @@ well_to_index <- function(well, n_wells = 96) {
 #' @examples
 calc_matrix_D_best <- function(data,
                                value_col,
+                               calibration_well = "E05",
                                instrument_sensitivity = 20) {
+
+  calibration_row <- well_to_rownum(calibration_well)
+  calibration_col <- well_to_colnum(calibration_well)
 
 
 
@@ -68,7 +72,14 @@ calc_matrix_D_best <- function(data,
 
   while (looking_for_best) {
     counter <- counter + 1
-    bleed_df <- calc_bleed_df(working_df, time_cutoff = 50)
+
+    bleed_df <- calc_bleed_df(
+      data = working_df,
+      time_cutoff = 50,
+      calibrate_row = calibration_row,
+      calibrate_col = calibration_col
+      )
+
     mean_mat <- bleed_df %>%
       tibble_to_matrix(ratio_mean)
     sd_mat <- bleed_df %>%
@@ -77,8 +88,11 @@ calc_matrix_D_best <- function(data,
 
     mean_rand_mat <-
       mean_mat + (update_timer / 50) * rnorm(1, 0, 1) * sd_mat
-
-    matrix_D_working <- make_decon_matrix(mean_rand_mat)
+    matrix_D_working <- make_decon_matrix(
+      mat = mean_rand_mat,
+      sample_row = 2 * max(data$row) - 1 - calibration_row,
+      sample_col = 2 * max(data$col) - 1 - calibration_col
+      )
 
     working_frames <- working_df %>%
       frames_to_matrix()
@@ -87,7 +101,7 @@ calc_matrix_D_best <- function(data,
       deconvolute_matrix_frames(matrix_D_working)
 
     adjusted_frames_sans <-
-      adjusted_frames[,-well_to_index(join_well(5, 5))]
+      adjusted_frames[, -well_to_index(calibration_well)]
 
 
     compared_frames_sans <-

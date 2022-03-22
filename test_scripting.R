@@ -18,7 +18,7 @@ num_pad <- function(x, width = 2) {
 
 # given a column number and a row (either number or letter) return the
 # 3-character well that is joined from the two
-join_well <- function(row, col) {
+well_join <- function(row, col) {
   if (is.numeric(row)) {
     row <- LETTERS[row]
   }
@@ -128,7 +128,7 @@ df_od <-
   mutate(
     row = well_to_rowlet(well) %>% let_to_num(),
     col = well_to_colnum(well),
-    well = join_well(LETTERS[row], col)
+    well = well_join(LETTERS[row], col)
   )
 
 df_lum <-
@@ -143,7 +143,7 @@ df_lum <-
   mutate(
     row = well_to_rowlet(well) %>% let_to_num(),
     col = well_to_colnum(well),
-    well = join_well(LETTERS[row], col),
+    well = well_join(LETTERS[row], col),
     lum = as.numeric(lum)
   )
 
@@ -192,7 +192,7 @@ translated_df <- df_lum %>%
   mutate(
     row = let_to_num(well_to_rowlet(well)) + 3,
     col = well_to_colnum(well) + 7,
-    well = join_well(LETTERS[row], col)
+    well = well_join(LETTERS[row], col)
   )
 
 
@@ -210,7 +210,7 @@ df_mean_sd <- translated_df %>%
 
 
 df <- expand.grid(col = 1:23, row = 1:15) %>%
-  mutate(well = join_well(row, col)) %>%
+  mutate(well = well_join(row, col)) %>%
   as_tibble() %>%
   left_join(df_mean_sd)
 

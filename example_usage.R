@@ -99,7 +99,7 @@ while (looking_for_best) {
     decon_frames(matrix_D_working)
 
   df_compared <- df_adjusted %>%
-    filter(well != join_well(5, 5)) %>%
+    filter(well != well_join(5, 5)) %>%
     mutate(
       compare = adjusted - instrument_sensitivity <= 0
     )
@@ -174,7 +174,7 @@ working_df %>%
   geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
              colour = "black") +
   geom_line(
-    data = filter(working_df, well == join_well(5, 5)),
+    data = filter(working_df, well == well_join(5, 5)),
     colour = "tomato",
     size = 1
   ) +
@@ -189,7 +189,7 @@ df_observed_values %>%
   geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
              colour = "black") +
   geom_line(
-    data = filter(df_observed_values, well == join_well(5, 5)),
+    data = filter(df_observed_values, well == well_join(5, 5)),
     colour = "tomato",
     size = 1
   ) +
@@ -209,7 +209,7 @@ df_observed_values %>%
   geom_hline(yintercept = instrument_sensitivity, linetype = "dashed",
              colour = "black") +
   geom_line(
-    data = filter(df_observed_values, well == join_well(5, 5)),
+    data = filter(df_observed_values, well == well_join(5, 5)),
     colour = "tomato",
     size = 1
   ) +
@@ -227,7 +227,7 @@ stop()
 
 
 working_df %>%
-  filter(well != join_well(5, 5)) %>%
+  filter(well != well_join(5, 5)) %>%
   ggplot(aes(cycle_nr, lum)) +
   geom_line(aes(group = well)) +
   geom_hline(yintercept = instrument_sensitivity, colour = "tomato",
@@ -248,7 +248,7 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   scale_fill_viridis_c(limits = c(0,NA)) +
   labs(title = "Deconvoluted with Best Kernal D Best")
 
-target_wells <- c(join_well(1:8, 5), join_well(1:8, 7), join_well(c(2, 7), 6))
+target_wells <- c(well_join(1:8, 5), well_join(1:8, 7), well_join(c(2, 7), 6))
 
 read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx") %>%
   decon_frames(matrix_D_best) %>%

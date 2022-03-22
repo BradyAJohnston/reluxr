@@ -25,7 +25,7 @@ df_od <-
   mutate(
     row = well_to_rowlet(well) %>% let_to_num(),
     col = well_to_colnum(well),
-    well = join_well(LETTERS[row], col)
+    well = well_join(LETTERS[row], col)
   )
 
 df_lum <-
@@ -43,7 +43,7 @@ df_lum <-
   mutate(
     row = well_to_rowlet(well) %>% let_to_num(),
     col = well_to_colnum(well),
-    well = join_well(LETTERS[row], col),
+    well = well_join(LETTERS[row], col),
     lum = as.numeric(lum),
     cycle_nr = as.numeric(cycle_nr)
   ) %>%
@@ -409,7 +409,7 @@ sample_df <-
   mutate(
     row = well_to_rowlet(well) %>% let_to_num(),
     col = well_to_colnum(well),
-    well = join_well(LETTERS[row], col),
+    well = well_join(LETTERS[row], col),
     lum = as.numeric(lum),
     cycle_nr = as.numeric(cycle_nr)
   ) %>%

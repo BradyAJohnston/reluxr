@@ -18,7 +18,7 @@ library(reluxr)
 #     mutate(
 #       row = well_to_rowlet(well) %>% let_to_num(),
 #       col = well_to_colnum(well),
-#       well = join_well(LETTERS[row], col),
+#       well = well_join(LETTERS[row], col),
 #       lum = as.numeric(lum),
 #       time_s = as.numeric(time_s),
 #       cycle_nr = as.numeric(cycle_nr)
@@ -237,7 +237,7 @@ while (looking_for_best) {
     decon_frames(matrix_D)
 
   comparison <- adjusted_frames %>%
-    filter(well != join_well(5, 5)) %>%
+    filter(well != well_join(5, 5)) %>%
     mutate(
       compare = adjusted - instrument_sensitivity < 0
     ) %>%
