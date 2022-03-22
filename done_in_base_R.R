@@ -2,6 +2,69 @@ library(reluxr)
 library(tidyverse)
 
 
+path <- "inst/Xfiles/tecan/calibration/calTecan1.xlsx"
+
+starting_details <- readxl::read_excel(path) %>%
+  select(1) %>%
+  rename(col = 1)
+
+starting_numbers <- starting_details %>%
+  mutate(
+    check = if_else(col == 1 & lead(col) == 2, TRUE, FALSE)
+  ) %>%
+  pull(check) %>%
+    which()
+ending_numbers <- starting_details %>%
+  mutate(
+    check = if_else(str_detect(col, "^\\d+$") & is.na(lead(col)), TRUE, FALSE)
+  ) %>%
+  pull(check) %>%
+    which()
+
+
+
+starting_details %>% print(n = 300)
+
+
+starting_details[starting_numbers - 2, 1]
+
+
+is_well_id <- function(x) {
+  stringr::str_detect(x, "^\\w\\d{1,3}$")
+}
+
+readxl::read_excel(path, skip = starting_numbers[1]-1, n_max = ending_numbers[1] - starting_numbers[1] + 1) %>%
+  janitor::clean_names() %>%
+  rename_with(
+    well_format,
+    .cols = matches("^\\w\\d{1,3}$")
+  ) %>%
+  pivot_longer(
+    cols = matches("^\\w\\d{1,3}$"),
+    names_to = "well",
+    values_to = "value"
+  )
+
+
+data_list <- lapply(seq_along(starting_numbers), function(x) {
+  readxl::read_excel(path, skip = starting_numbers[x] - 1, n_max = ending_numbers[x] - starting_numbers[x] + 1) %>%
+    janitor::clean_names() %>%
+    rename_with(
+      well_format,
+      .cols = matches("^\\w\\d{1,3}$")
+    ) %>%
+    pivot_longer(
+      cols = matches("^\\w\\d{1,3}$"),
+      names_to = "well",
+      values_to = starting_details[starting_numbers[x] - 2, 1] %>% pull()
+    )
+})
+
+
+
+stringr::str_detect("a5", "^\\w\\d")
+
+
 input_lum <- read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx")
 
 
@@ -19,7 +82,7 @@ input_lum <-
 
 
 raw_bg <- input_lum %>%
-  filter(col == 12)
+  filter(well %in% well_join(1:8, 12))
 
 
 lum_bg_mean <- mean(raw_bg$lum)

@@ -66,8 +66,30 @@ well_join <- function(row, col, num_width = 2) {
   if (is.numeric(row)) {
     row <- LETTERS[row]
   }
+  rows <- rep(row, each = length(col))
+  cols <- num_pad(rep(col, times = length(row)), width = num_width)
+  as.character(paste0(rows, cols))
+}
 
-  as.character(paste0(row, num_pad(col, width = num_width)))
+
+#' Take a well ID and format it evrbosely.
+#'
+#' @param x Vector of well IDs
+#'
+#' @return Vector of formatted well IDs as strings.
+#' @export
+#'
+#' @examples
+#' well_format(c("a05", "a5", "A5", "C1"))
+well_format <- function(x) {
+  sapply(x, function(x) {
+    row <- well_to_rownum(x)
+    col <- well_to_colnum(x)
+    well_join(row, col)
+  },
+  simplify = TRUE,
+  USE.NAMES = FALSE
+  )
 }
 
 #' Extract number from well ID.
