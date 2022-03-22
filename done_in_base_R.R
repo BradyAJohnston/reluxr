@@ -34,8 +34,10 @@ df_observed_values <- input_lum %>%
 
 
 # -------------------------------------------------------------------------
-matrix_D_best <- calc_matrix_D_best(df_observed_values,
-                                    instrument_sensitivity = instrument_sensitivity)
+matrix_D_best <- calc_matrix_D_best(
+  df_observed_values,
+  instrument_sensitivity = instrument_sensitivity
+  )
 
 
 stop()

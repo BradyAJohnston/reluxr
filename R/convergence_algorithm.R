@@ -62,12 +62,8 @@ calc_matrix_D_best <- function(data,
 
 
   working_df <- data
-
-
   looking_for_best <- TRUE
   counter <- 0
-  matrix_log <- list()
-  lower_log <- c()
   update_timer <- 1
 
   while (looking_for_best) {
@@ -105,13 +101,14 @@ calc_matrix_D_best <- function(data,
 
     if (perc_correct < 100) {
       if (counter == 1) {
+        # setup the progress bar for the optimsation iterations
         cli::cli_progress_bar(
           name = "Optimising Deconvolution Matrix",
-          status = counter
+          status = counter,
+          clear = FALSE
           )
 
         matrix_D_best <- matrix_D_working %*% diag(96)
-        matrix_log[[counter]] <- matrix_D_working
         old_perc_correct <- perc_correct
 
 
@@ -121,34 +118,40 @@ calc_matrix_D_best <- function(data,
           rename(cycle_nr = time,
                  lum = value)
 
-
+      # reset the update timer
         update_timer <- 0
       } else {
         if (perc_correct > old_perc_correct) {
+          # combine current best and previous best deconvolution matrices
           matrix_D_best <- matrix_D_working %*% matrix_D_best
-          lower_log <- c(lower_log, counter)
 
-          matrix_log[[counter]] <- matrix_D_working
-
+          # update working_df with values that have been successfully reduced
           working_df <-
             update_frames(working_frames, adjusted_frames) %>%
             matrix_to_frames_df() %>%
             rename(cycle_nr = time,
                    lum = value)
 
+          # reset the update timer
           update_timer <- 0
+          # update the old_perc_correct with the new value
           old_perc_correct <- perc_correct
         }
 
       }
     } else {
+      # the best matrix has been found so stop the iterations
       looking_for_best <- FALSE
     }
+    # update the progress bar for the user
     cli::cli_progress_update(status = scales::percent(old_perc_correct / 100, accuracy = 0.01), inc = 1)
+    # increase the update_timer
     update_timer <- update_timer + 1
   }
-
+  # Update and finish the progress bar
+  cli::cli_progress_update(status = scales::percent(1), inc = 1)
   cli::cli_progress_done()
 
+  # return the finalised matrix_D_best converged at during the calculations.
   return(matrix_D_best)
 }
