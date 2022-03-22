@@ -67,9 +67,7 @@ join_well <- function(row, col, num_width = 2) {
     row <- LETTERS[row]
   }
 
-
-  stringr::str_glue("{row}{num_pad(col, width = num_width)}") %>%
-    as.character()
+  as.character(paste0(row, num_pad(col, width = num_width)))
 }
 
 #' Extract number from well ID.
@@ -108,6 +106,34 @@ well_to_rowlet <- function(x) {
 well_to_rownum <- function(x) {
   well_to_rowlet(x) %>%
     let_to_num()
+}
+
+#' Calculate number of columns from given number of wells.
+#'
+#' @param x Number of wells in plate, e.g. 384 or 96.
+#'
+#' @return
+n_cols_from_wells <- function(x) {
+  switch(as.character(x),
+         "6" = 3,
+         "12" = 4,
+         "24" = 6,
+         "96" = 12,
+         "384" = 24)
+}
+
+#' Calculate number of rows from given number of wells.
+#'
+#' @param x Number of wells in plate, e.g. 384 or 96.
+#'
+#' @return
+n_rows_from_wells <- function(x) {
+  switch(as.character(x),
+         "6" = 2,
+         "12" = 3,
+         "24" = 4,
+         "96" = 8,
+         "384" = 16)
 }
 
 #' Calculate Distance Between Wells
