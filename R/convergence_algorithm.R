@@ -43,29 +43,53 @@ well_to_index <- function(well, n_wells = 96) {
 # try to apply to convergence algorithm -----------------------------------
 
 
+#' Title
+#'
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+cement <- function(...) {
+  args <- rlang::ensyms(...)
+  paste(purrr::map(args, rlang::as_string), collapse = " ")
+}
+
 
 #' Title
 #'
 #' @param data
 #' @param value_col Column that contains observed values for creation of the
+#' @param col_time
+#' @param col_value
+#' @param calibration_well
+#' @param instrument_sensitivity
+#' @param time_cutoff
 #'   deconvolution matrix.
-#' @param exp_met Experimental metadata.
-#'
 #' @return
 #' @export
 #'
 #' @examples
 calc_matrix_D_best <- function(data,
                                value_col,
+                               col_time,
+                               col_value,
                                calibration_well = "E05",
-                               instrument_sensitivity = 20) {
+                               instrument_sensitivity = 20,
+                               time_cutoff = 50
+                               ) {
+
 
   calibration_row <- well_to_rownum(calibration_well)
   calibration_col <- well_to_colnum(calibration_well)
 
 
+  # Setting up working_df that will be operated on to optimise the matrix_D_best
+  working_df <- dplyr::select(data, -{{ col_value }}, -{{ col_time }})
+  working_df$value <- dplyr::pull(data, {{ col_value }})
+  working_df$time <- dplyr::pull(data, {{ col_time }})
 
-  working_df <- data
   looking_for_best <- TRUE
   counter <- 0
   update_timer <- 1
@@ -75,7 +99,9 @@ calc_matrix_D_best <- function(data,
 
     bleed_df <- calc_bleed_df(
       data = working_df,
-      time_cutoff = 50,
+      time_cutoff = time_cutoff,
+      col_time = time,
+      col_value = value,
       calibrate_row = calibration_row,
       calibrate_col = calibration_col
       )
@@ -90,12 +116,15 @@ calc_matrix_D_best <- function(data,
       mean_mat + (update_timer / 50) * rnorm(1, 0, 1) * sd_mat
     matrix_D_working <- make_decon_matrix(
       mat = mean_rand_mat,
-      sample_row = 2 * max(data$row) - 1 - calibration_row,
-      sample_col = 2 * max(data$col) - 1 - calibration_col
+      sample_row = max(data$row),
+      sample_col = max(data$col)
       )
 
     working_frames <- working_df %>%
-      frames_to_matrix()
+      frames_to_matrix(
+        value_col = "value",
+        time_col = "time"
+      )
 
     adjusted_frames <- working_frames %>%
       deconvolute_matrix_frames(matrix_D_working)
@@ -128,9 +157,9 @@ calc_matrix_D_best <- function(data,
 
         working_df <-
           update_frames(working_frames, adjusted_frames) %>%
-          matrix_to_frames_df() %>%
-          rename(cycle_nr = time,
-                 lum = value)
+          matrix_to_frames_df()# %>%
+          # rename(!!{{ col_time }} = time,
+                 # !!{{ col_value }} = value)
 
       # reset the update timer
         update_timer <- 0
@@ -142,9 +171,9 @@ calc_matrix_D_best <- function(data,
           # update working_df with values that have been successfully reduced
           working_df <-
             update_frames(working_frames, adjusted_frames) %>%
-            matrix_to_frames_df() %>%
-            rename(cycle_nr = time,
-                   lum = value)
+            matrix_to_frames_df() #%>%
+            # rename(!!{{ col_time }} = time,
+                   # !!{{ col_value }} = value)
 
           # reset the update timer
           update_timer <- 0

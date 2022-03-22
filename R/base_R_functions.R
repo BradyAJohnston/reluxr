@@ -183,12 +183,12 @@ deconvolute_df_col <- function(data, mat_decon, column) {
 #' @examples
 frames_to_matrix <- function(data, value_col = "lum", time_col = "cycle_nr") {
   data <- as.data.frame(data)
-  frame_numbers <- order(unique(data[, time_col]))
+  frame_numbers <- order(unique(data[, cement({{ time_col }})]))
   data <- data[order(data$col), ]
   data <- data[order(data$row), ]
 
   lapply(frame_numbers, function(x) {
-    data[data[, time_col] == x, value_col]
+    data[data[, cement({{ time_col }})] == x, cement({{ value_col }})]
   }) %>%
     do.call(rbind, .) %>%
     as.matrix()
@@ -330,7 +330,7 @@ translate_df_wells <- function(data,
 #' @examples
 deconvolute_df_frames <- function(data, column, mat_decon) {
   deconvoluted_data <- data %>%
-    frames_to_matrix("lum") %>%
+    frames_to_matrix({{ column }}) %>%
     deconvolute_matrix_frames(mat_decon) %>%
     matrix_to_frames_df()
 

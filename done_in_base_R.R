@@ -36,57 +36,12 @@ df_observed_values <- input_lum %>%
 
 # -------------------------------------------------------------------------
 matrix_D_best <- calc_matrix_D_best(
-  df_observed_values,
+  data = df_observed_values,
+  col_time = cycle_nr,
+  col_value = lum,
   instrument_sensitivity = instrument_sensitivity
   )
 
-stop()
-
-calc_best <- function(data, instrument_sensitivity = 20) {
-  results <- list(
-    mat = calc_matrix_D_best(
-      data = data,
-      instrument_sensitivity = instrument_sensitivity
-      ),
-    plate_size = 96,
-    iterations = 184
-    )
-
-  class(results) <-  "plate"
-  results
-}
-
-
-out_best_results <- calc_best(df_observed_values, instrument_sensitivity)
-
-
-
-print.plate <- function(x, ...) {
-  print(x["mat"])
-}
-
-plot.plate <- function(x, ...) {
-  mat <- x[["mat"]]
-  # mat %>%
-  #   matrix_to_tibble() %>%
-  #   plot_wells(value) +
-  #   ggplot2::coord_fixed() +
-  #   ggplot2::theme_void() +
-  #   ggplot2::guides(fill = "none")
-  image(log10(mat[seq(nrow(mat), 1), ]),
-        xaxt = "n", yaxt = "n",
-        bty = "n", ...)
-}
-
-plot(out_best_results, asp = 1)
-
-summary.plate <- function (object, ...) {
-  cat(
-    "Deconvolution matrix for a", object[["plate_size"]], "well plate."
-  )
-}
-
-summary(out_best_results)
 
 read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
   deconvolute_df_frames(lum, matrix_D_best) %>%
@@ -96,7 +51,7 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
 
 
 read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
-  decon_frames(matrix_D_best) %>%
+  deconvolute_df_frames(lum, matrix_D_best) %>%
   filter(cycle_nr == 100) %>%
   plot_wells_comparison() +
   scale_fill_viridis_c(limits = c(0,NA)) +
@@ -104,7 +59,7 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
 
 
 read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
-  decon_frames(matrix_D_best) %>%
+  deconvolute_df_frames(lum, matrix_D_best) %>%
   filter(cycle_nr == 100) %>%
   pivot_longer(c(lum, adjusted), values_to = "lum") %>%
 
@@ -149,7 +104,7 @@ read_plate("inst/Xfiles/tecan/tecanON1.xlsx") %>%
 target_wells <- c(well_join(1:8, 5), well_join(1:8, 7), well_join(c(2, 7), 6))
 
 read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx") %>%
-  decon_frames(matrix_D_best) %>%
+  deconvolute_df_frames(lum, matrix_D_best) %>%
   filter(cycle_nr == 107) %>%
   mutate(adjusted = if_else(adjusted < instrument_sensitivity, 0, adjusted)) %>%
   plot_wells(adjusted, log10_fill = TRUE) +
@@ -157,12 +112,12 @@ read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx") %>%
   scale_fill_viridis_c(limits = c(0, NA))
 
 read_plate("inst/Xfiles/tecan/calibration/calTecan1.xlsx") %>%
-  decon_frames(matrix_D_best) %>%
+  deconvolute_df_frames(lum, matrix_D_best) %>%
   pivot_longer(c(lum, adjusted)) %>%
   plot_wells_time()
 
 read_plate("inst/Xfiles/tecan/tecanOFF1.xlsx") %>%
-  decon_frames(matrix_D_best) %>%
+  deconvolute_df_frames(lum, matrix_D_best) %>%
   pivot_longer(c(lum, adjusted)) %>%
   plot_wells_time()
 
@@ -177,7 +132,7 @@ lapply(list.files("inst/Xfiles/tecan/",
     sd = sd(lum, na.rm = TRUE),
     lum = mean(lum, na.rm = TRUE)
   ) %>%
-  decon_frames(matrix_D_best) %>%
+  deconvolute_df_frames(lum, matrix_D_best) %>%
   mutate(target = if_else(well %in% target_wells, "target", "background")) %>%
   pivot_longer(c(lum, adjusted)) %>%
   ggplot(aes(cycle_nr, value, colour = target, group = well)) +
@@ -197,7 +152,7 @@ lapply(list.files("inst/Xfiles/tecan/",
     sd = sd(lum, na.rm = TRUE),
     lum = mean(lum, na.rm = TRUE)
   ) %>%
-  decon_frames(matrix_D_best) %>%
+  deconvolute_df_frames(lum, matrix_D_best) %>%
   filter(cycle_nr == 120) %>%
   plot_wells_comparison()
 
@@ -213,7 +168,7 @@ lapply(list.files("inst/Xfiles/tecan/",
     sd = sd(lum, na.rm = TRUE),
     lum = mean(lum, na.rm = TRUE)
   ) %>%
-  decon_frames(matrix_D_best) %>%
+  deconvolute_df_frames(lum, matrix_D_best) %>%
   mutate(target = if_else(well %in% target_wells, "Signal", "Background")) %>%
   pivot_longer(c(lum, adjusted)) %>%
   mutate(name = factor(name, levels = c("lum", "adjusted"),

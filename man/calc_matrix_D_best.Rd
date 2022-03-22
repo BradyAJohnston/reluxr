@@ -7,15 +7,17 @@
 calc_matrix_D_best(
   data,
   value_col,
+  col_time,
+  col_value,
   calibration_well = "E05",
-  instrument_sensitivity = 20
+  instrument_sensitivity = 20,
+  time_cutoff = 50
 )
 }
 \arguments{
-\item{value_col}{Column that contains observed values for creation of the
-deconvolution matrix.}
+\item{value_col}{Column that contains observed values for creation of the}
 
-\item{exp_met}{Experimental metadata.}
+\item{time_cutoff}{deconvolution matrix.}
 }
 \value{
 

@@ -102,13 +102,13 @@ create_extended_tibble <- function(data,
 
   data %>%
     # translate the plate as required
-    mutate(
+    dplyr::mutate(
       row = row + row_adjustment,
       col = col + col_adjustment
     ) %>%
 
     # fill with empty values for the other spots in extended plate
-    right_join(
+    dplyr::right_join(
       create_blank_plate(
         n_rows = 2 * n_rows - 1,
         n_cols = 2 * n_cols - 1
@@ -117,7 +117,7 @@ create_extended_tibble <- function(data,
     ) %>%
 
     # calculate distance for all wells in extended plate
-    mutate(
+    dplyr::mutate(
       dis = well_dis(
         row = row,
         col = col,
@@ -128,37 +128,37 @@ create_extended_tibble <- function(data,
 
     # fill in empty wells with values from corresponding wells with same
     # distance from the calibration well
-    group_by(dis) %>%
-    mutate(
+    dplyr::group_by(dis) %>%
+    dplyr::mutate(
       average_ratio_mean  = mean(ratio_mean, na.rm = TRUE),
       average_ratio_sd    = mean(ratio_sd, na.rm = TRUE)
     ) %>%
-    ungroup() %>%
+    dplyr::ungroup() %>%
 
     # fill in remaining
-    mutate(
-      ratio_mean = if_else(
+    dplyr::mutate(
+      ratio_mean = dplyr::if_else(
         is.na(ratio_mean),
         average_ratio_mean,
         ratio_mean
       ),
-      ratio_sd = if_else(
+      ratio_sd = dplyr::if_else(
         is.na(ratio_sd),
         average_ratio_sd,
         ratio_sd
       ),
-      ratio_mean = if_else(
+      ratio_mean = dplyr::if_else(
         is.na(ratio_mean),
         lum_bg_ratio_mean,
         ratio_mean
       ),
-      ratio_sd = if_else(
+      ratio_sd = dplyr::if_else(
         is.na(ratio_sd),
         lum_bg_ratio_sd,
         ratio_sd
       )
     ) %>%
-    select(well, row, col,  ratio_mean, ratio_sd, dis)
+    dplyr::select(well, row, col,  ratio_mean, ratio_sd, dis)
 }
 
 #' Title
@@ -172,9 +172,9 @@ create_extended_tibble <- function(data,
 #' @examples
 decon_frames <- function(data, decon_mat) {
   data %>%
-    group_by(cycle_nr) %>%
-    nest() %>%
-    mutate(
+    dplyr::group_by(cycle_nr) %>%
+    tidyr::nest() %>%
+    dplyr::mutate(
       adjusted = purrr::map(
         .x = data,
         .f = ~ deconvolute_data(
@@ -184,8 +184,8 @@ decon_frames <- function(data, decon_mat) {
         )
       )
     ) %>%
-    select(cycle_nr, adjusted) %>%
-    unnest(adjusted)
+    dplyr::select(cycle_nr, adjusted) %>%
+    tidyr::unnest(adjusted)
 }
 
 
@@ -195,38 +195,43 @@ decon_frames <- function(data, decon_mat) {
 #' @param time_cutoff
 #' @param calibrate_row
 #' @param calibrate_col
+#' @param col_time
+#' @param col_value
+#' @param background_wells
 #'
 #' @return
 #' @export
 #'
 #' @examples
 calc_bleed_df <- function(data,
+                          col_time,
+                          col_value,
                           time_cutoff = 30,
                           calibrate_row = 5,
-                          calibrate_col = 5
+                          calibrate_col = 5,
+                          background_wells = well_join(1:8, 12)
                           ) {
   time_averaged_df <- data %>%
-    group_by(cycle_nr) %>%
-    mutate(
-      ratio = lum / max(lum)
+    dplyr::group_by({{ col_time }}) %>%
+    dplyr::mutate(
+      ratio = {{ col_value }} / max({{ col_value }})
     ) %>%
-    ungroup() %>%
-    filter(cycle_nr > time_cutoff) %>%
-    group_by(well, row, col) %>%
-    summarise(
+    dplyr::ungroup() %>%
+    dplyr::filter({{ col_time }} > time_cutoff) %>%
+    dplyr::group_by(well, row, col) %>%
+    dplyr::summarise(
       ratio_mean = mean(ratio, na.rm = TRUE),
       ratio_sd   = sd(ratio, na.rm = TRUE)
     ) %>%
-    ungroup()
+    dplyr::ungroup()
 
   background_ratios <- time_averaged_df %>%
-    filter(col == 12) %>%
-    summarise(
+    dplyr::filter(well %in% background_wells) %>%
+    dplyr::summarise(
       mean = mean(ratio_mean, na.rm = TRUE),
       sd = mean(ratio_sd, na.rm = TRUE)
     )
 
-  # print(background_ratios)
 
   time_averaged_df %>%
     create_extended_tibble(
