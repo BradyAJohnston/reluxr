@@ -30,14 +30,19 @@ starting_details[starting_numbers - 2, 1]
 
 
 is_well_id <- function(x) {
-  stringr::str_detect(x, "^\\w\\d{1,3}$")
+  stringr::str_detect(x, wellID)
 }
+
+wellID <- "^\\w\\d{1,3}$"
+
+well_join(1:10, seq(10))
 
 readxl::read_excel(path, skip = starting_numbers[1]-1, n_max = ending_numbers[1] - starting_numbers[1] + 1) %>%
   janitor::clean_names() %>%
   rename_with(
     well_format,
-    .cols = matches("^\\w\\d{1,3}$")
+    # .cols = matches("^\\w\\d{1,3}$")
+    .cols = matches(wellID)
   ) %>%
   pivot_longer(
     cols = matches("^\\w\\d{1,3}$"),
@@ -55,12 +60,20 @@ data_list <- lapply(seq_along(starting_numbers), function(x) {
     ) %>%
     pivot_longer(
       cols = matches("^\\w\\d{1,3}$"),
-      names_to = "well",
-      values_to = starting_details[starting_numbers[x] - 2, 1] %>% pull()
+      names_to = "well"
+    ) %>%
+    mutate(
+      reading = starting_details[starting_numbers[x] - 2, 1] %>% pull()
     )
 })
 
+data_list
 
+purrr::reduce(
+  data_list[[-1]],
+  ~left_join(.x, select(.y, well, value, reading)),
+  .init = data_list[[1]]
+)
 
 stringr::str_detect("a5", "^\\w\\d")
 
