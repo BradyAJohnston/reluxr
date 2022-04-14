@@ -16,6 +16,8 @@ end_met <- find_end_of_metadata(fl)
 raw_readings <- read_csv(fl, skip = end_met)
 raw_rows <- readLines(fl)
 raw_rows <- raw_rows[seq(end_met, length(raw_rows))]
+raw_rows <- raw_rows %>%
+  str_remove_all("T\\xb0 ")
 col_1 <- raw_readings %>%
   pull(1)
 unique_headings <- raw_readings %>%
@@ -38,24 +40,28 @@ df <- tibble(
   group_by(group) %>%
   nest()
 
+# df %>%
+#   mutate(
+#     data = map(data, function(x) {
+#       str_replace_all(x, fixed("T\xb0 "), "")
+#     })
+#   ) %>%
+#   unnest(data)
 
-df %>%
+df <- df %>%
+  mutate(
+    group = if_else(is.na(group), 17L, group)
+  )
+
+df <- df %>%
   mutate(
     chunk = map_chr(data, function(x) {
       str_extract(x$raw[1], "^[^,]+")
     })
   ) %>%
 
-
-df$data[[1]]$raw
-lapply(df$data, \(x) x)
-df %>%
-  filter(is.na(group)) %>%
-  unnest()
-
-df %>%
   mutate(
-    tib = map(data, function(x) {
+    values = map(data, function(x) {
       y <- x %>%
         slice(-c(1, 2)) %>%
         .$raw
@@ -63,8 +69,23 @@ df %>%
 
       fl1 <- tempfile()
       writeLines(y, print(fl1))
-      read_csv(fl1)
+      read_csv(fl1) %>%
+        select(-1)
+    })
+  )
+
+
+
+
+df %>%
+  select(chunk, values) %>%
+  mutate(
+    values = map(values, function(x) {
+      x %>%
+        pivot_longer(cols = matches("^\\w\\d{1,2}$")) %>%
+        janitor::clean_names()
     })
   ) %>%
-  unnest(tib)
-
+  ungroup() %>%
+  filter(chunk != "Results") %>%
+  unnest(values)
