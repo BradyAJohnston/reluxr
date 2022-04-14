@@ -77,7 +77,7 @@ df <- df %>%
 
 
 
-df %>%
+df <- df %>%
   select(chunk, values) %>%
   mutate(
     values = map(values, function(x) {
@@ -88,4 +88,12 @@ df %>%
   ) %>%
   ungroup() %>%
   filter(chunk != "Results") %>%
-  unnest(values)
+  unnest(values) %>%
+  select(!matches("t_"))
+
+df %>%
+  ggplot(aes(time, value, group = name)) +
+  geom_line() +
+  scale_y_log10() +
+  facet_wrap(~chunk, scales = "free") +
+  theme_light()
