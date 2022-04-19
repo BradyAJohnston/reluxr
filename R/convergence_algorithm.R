@@ -60,7 +60,6 @@ cement <- function(...) {
 #' Title
 #'
 #' @param data
-#' @param value_col Column that contains observed values for creation of the
 #' @param col_time
 #' @param col_value
 #' @param calibration_well
@@ -72,7 +71,7 @@ cement <- function(...) {
 #'
 #' @examples
 calc_matrix_D_best <- function(data,
-                               value_col,
+                               #value_col,
                                col_time,
                                col_value,
                                calibration_well = "E05",
@@ -114,10 +113,11 @@ calc_matrix_D_best <- function(data,
 
     mean_rand_mat <-
       mean_mat + (update_timer / 50) * rnorm(1, 0, 1) * sd_mat
+
     matrix_D_working <- make_decon_matrix(
       mat = mean_rand_mat,
-      sample_row = max(data$row),
-      sample_col = max(data$col)
+      sample_row = calibration_row,
+      sample_col = calibration_col
       )
 
     working_frames <- working_df %>%

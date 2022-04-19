@@ -92,8 +92,102 @@ df <- df %>%
   select(!matches("t_"))
 
 df %>%
+  filter(time == max(time, na.rm = TRUE)) %>%
+  mutate(
+    well = name,
+    row = wellr::well_to_rownum(well),
+    col = wellr::well_to_colnum(well)
+  ) %>%
+  reluxr::plot_wells(value) +
+  facet_wrap(~chunk) +
+  theme(
+    strip.placement = "outside"
+  )
+
+df <- df %>%
+  filter(
+    str_detect(chunk, fixed("lum", TRUE))
+  ) %>%
+  select(group, chunk, time, name, value) %>%
+  rename(
+    well = name
+    ) %>%
+  mutate(
+    row = wellr::well_to_rownum(well),
+    col = wellr::well_to_colnum(well),
+    well = wellr::well_join(row, col)
+  )
+
+
+
+time_to_hours <- function(time) {
+  lubridate::hour(time) + lubridate::minute(time) / 60 + lubridate::second(time) / 360
+}
+
+df <- df %>%
+  mutate(
+    time = time_to_hours(time),
+    chunk = factor(chunk),
+    time = time + 2.25 * (as.numeric(chunk) - 1)
+  )
+
+df %>%
+  filter(time == max(time, na.rm = TRUE)) %>%
+  filter(value == max(value, na.rm = TRUE))
+df %>%
+  pull(col) %>%
+  unique
+
+
+df %>% pull(col) %>% max
+
+# create_blank_plate(16 * 2 - 1, 24 * 2 - 1) %>%
+#   mutate(
+#     well = wellr::well_join(row, col),
+#     id = wellr::well_to_index(well)
+#   ) %>%
+#   plot_wells(id)
+
+df %>%
+  calc_bleed_df(
+    time,
+    value,
+    time_cutoff = 2.5,
+    calibrate_row = wellr::well_to_rownum("I5"),
+    calibrate_col = wellr::well_to_rownum("I5")
+  ) %>%
+  make_decon_matrix(
+
+  )
+
+
+reluxr::calc_matrix_D_best(
+  data = df,
+  col_value = value,
+  col_time = time,
+  calibration_well = "I12",
+  time_cutoff = 2
+  )
+
+
+
+
+stop()
+df %>%
+  ggplot(aes(time, value, group = well)) +
+  geom_line() +
+  # geom_point() +
+  scale_y_log10()# +
+  facet_wrap(~chunk)
+
+df %>%
   ggplot(aes(time, value, group = name)) +
   geom_line() +
   scale_y_log10() +
   facet_wrap(~chunk, scales = "free") +
   theme_light()
+
+
+df %>%
+  filter(time == max(time, na.rm = TRUE)) %>%
+  reluxr::plot_wells(value)

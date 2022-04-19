@@ -1,13 +1,13 @@
 #' Creates blank plate with given columns and rows
 #'
-#' @param n_cols Number of columns.
 #' @param n_rows Number of rows.
+#' @param n_cols Number of columns.
 #'
 #' @return
 #' @export
 #'
 #' @examples
-create_blank_plate <- function(n_cols, n_rows) {
+create_blank_plate <- function(n_rows, n_cols) {
   expand.grid(col = seq(n_cols), row = seq(n_rows)) %>%
     tibble::as_tibble()
 }

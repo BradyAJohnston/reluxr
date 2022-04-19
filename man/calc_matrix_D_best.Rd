@@ -6,7 +6,6 @@
 \usage{
 calc_matrix_D_best(
   data,
-  value_col,
   col_time,
   col_value,
   calibration_well = "E05",
@@ -15,8 +14,6 @@ calc_matrix_D_best(
 )
 }
 \arguments{
-\item{value_col}{Column that contains observed values for creation of the}
-
 \item{time_cutoff}{deconvolution matrix.}
 }
 \value{

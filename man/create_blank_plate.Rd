@@ -4,12 +4,12 @@
 \alias{create_blank_plate}
 \title{Creates blank plate with given columns and rows}
 \usage{
-create_blank_plate(n_cols, n_rows)
+create_blank_plate(n_rows, n_cols)
 }
 \arguments{
-\item{n_cols}{Number of columns.}
-
 \item{n_rows}{Number of rows.}
+
+\item{n_cols}{Number of columns.}
 }
 \value{
 

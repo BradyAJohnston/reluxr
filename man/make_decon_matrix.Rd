@@ -4,7 +4,7 @@
 \alias{make_decon_matrix}
 \title{Title}
 \usage{
-make_decon_matrix(mat, sample_row = 8, sample_col = 12)
+make_decon_matrix(mat)
 }
 \arguments{
 \item{sample_col}{}

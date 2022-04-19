@@ -26,7 +26,13 @@ decon_col <- function(mat, rows, col = 12) {
 #' @export
 #'
 #' @examples
-make_decon_matrix <- function(mat, sample_row = 8, sample_col = 12) {
+make_decon_matrix <- function(mat#,
+                              # sample_row = 8,
+                              # sample_col = 12
+                              ) {
+  sample_row <- ceiling(nrow(mat) / 2)
+  sample_col <- ceiling(ncol(mat) / 2)
+
   lapply(seq(sample_row, 1), function(x) {
     decon_col(mat,
               rows = seq(x, x + max(sample_row) - 1),
@@ -94,8 +100,8 @@ create_extended_tibble <- function(data,
                                    lum_bg_ratio_mean,
                                    lum_bg_ratio_sd
 ) {
-  n_rows <- max(data$row)
-  n_cols <- max(data$col)
+  n_rows <- max(data$row, na.rm = TRUE)
+  n_cols <- max(data$col, na.rm = TRUE)
 
   row_adjustment <- n_rows - calibrate_row
   col_adjustment <- n_cols - calibrate_col

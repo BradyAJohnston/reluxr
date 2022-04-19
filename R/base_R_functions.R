@@ -44,7 +44,7 @@ matrix_to_df <- function(mat, calibrate_row = 5, calibrate_col = 5) {
 #'
 #' @examples
 df_to_matrix <- function(data, column) {
-  ncol = max(data$col)
+  ncol = max(data$col, na.rm = TRUE)
   as.data.frame(data) %>%
     reorder_df_by_wells() %>%
     .[, column] %>%
@@ -195,7 +195,6 @@ frames_to_matrix <- function(data, value_col = "lum", time_col = "cycle_nr") {
 }
 
 
-deconvolute_matrix_frames <- function(mat, mat_decon) {
 #' Title
 #'
 #' @param x
@@ -204,6 +203,7 @@ deconvolute_matrix_frames <- function(mat, mat_decon) {
 #' @export
 #'
 #' @examples
+deconvolute_matrix_frames <- function(mat, mat_decon) {
   lapply(seq(nrow(mat)), function(x) {
     deconvolute_vector(
       vec = mat[x, ],
@@ -285,8 +285,8 @@ mean_dis_mat <- function(data) {
 translate_df_wells <- function(data,
                                calibrate_row = 5,
                                calibrate_col = 5) {
-  n_rows <- max(data$row)
-  n_cols <- max(data$col)
+  n_rows <- max(data$row, na.rm = TRUE)
+  n_cols <- max(data$col, na.rm = TRUE)
 
   row_adjustment <- n_rows - calibrate_row
   col_adjustment <- n_cols - calibrate_col
