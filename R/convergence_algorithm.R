@@ -80,6 +80,9 @@ calc_matrix_D_best <- function(data,
                                ) {
 
 
+  plate_size = max(data$row, na.rm = TRUE) * max(data$col, na.rm = TRUE)
+
+
   calibration_row <- well_to_rownum(calibration_well)
   calibration_col <- well_to_colnum(calibration_well)
 
@@ -115,17 +118,16 @@ calc_matrix_D_best <- function(data,
       mean_mat + (update_timer / 50) * rnorm(1, 0, 1) * sd_mat
 
     matrix_D_working <- make_decon_matrix(
-      mat = mean_rand_mat,
-      sample_row = calibration_row,
-      sample_col = calibration_col
+      mat = mean_rand_mat#,
+      # sample_row = calibration_row,
+      # sample_col = calibration_col
       )
 
     working_frames <- working_df %>%
       frames_to_matrix(
-        value_col = "value",
-        time_col = "time"
+        value = {{ col_value }},
+        time = {{ col_time }}
       )
-
     adjusted_frames <- working_frames %>%
       deconvolute_matrix_frames(matrix_D_working)
 
@@ -151,7 +153,7 @@ calc_matrix_D_best <- function(data,
           clear = FALSE
           )
 
-        matrix_D_best <- matrix_D_working %*% diag(96)
+        matrix_D_best <- matrix_D_working %*% diag(plate_size)
         old_perc_correct <- perc_correct
 
 
@@ -189,6 +191,7 @@ calc_matrix_D_best <- function(data,
     # update the progress bar for the user
     cli::cli_progress_update(status = scales::percent(old_perc_correct / 100, accuracy = 0.01), inc = 1)
     # increase the update_timer
+    if (update_timer > 100) update_timer <- 0
     update_timer <- update_timer + 1
   }
   # Update and finish the progress bar

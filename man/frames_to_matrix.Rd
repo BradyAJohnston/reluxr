@@ -4,7 +4,7 @@
 \alias{frames_to_matrix}
 \title{Title}
 \usage{
-frames_to_matrix(data, value_col = "lum", time_col = "cycle_nr")
+frames_to_matrix(data, value, time)
 }
 \arguments{
 \item{time_col}{}

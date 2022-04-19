@@ -181,18 +181,39 @@ deconvolute_df_col <- function(data, mat_decon, column) {
 #' @export
 #'
 #' @examples
-frames_to_matrix <- function(data, value_col = "lum", time_col = "cycle_nr") {
-  data <- as.data.frame(data)
-  frame_numbers <- order(unique(data[, cement({{ time_col }})]))
-  data <- data[order(data$col), ]
-  data <- data[order(data$row), ]
+frames_to_matrix <- function(data, value, time) {
+  data <- data %>%
+    dplyr::arrange(row, col)
 
-  lapply(frame_numbers, function(x) {
-    data[data[, cement({{ time_col }})] == x, cement({{ value_col }})]
+  frames <- data %>%
+    dplyr::pull({{ time }}) %>%
+    unique()
+
+  purrr::map(frames, function(x) {
+    data %>%
+      dplyr::filter(
+        {{ time }} == x
+      ) %>%
+      dplyr::pull({{ value }})
   }) %>%
-    do.call(rbind, .) %>%
+    purrr::reduce(rbind) %>%
     as.matrix()
 }
+
+
+
+# frames_to_matrix <- function(data, value_col = "lum", time_col = "cycle_nr") {
+#   data <- as.data.frame(data)
+#   frame_numbers <- order(unique(data[, cement({{ time_col }})]))
+#   data <- data[order(data$col), ]
+#   data <- data[order(data$row), ]
+#
+#   lapply(frame_numbers, function(x) {
+#     data[data[, cement({{ time_col }})] == x, cement({{ value_col }})]
+#   }) %>%
+#     do.call(rbind, .) %>%
+#     as.matrix()
+# }
 
 
 #' Title
@@ -227,8 +248,12 @@ matrix_to_frames_df <- function(mat) {
   nwells <- ncol(mat)
   dimensions <- dim(mat)
 
-  df <- make_empty_plate(n_rows_from_wells(nwells),
-                         n_cols_from_wells(nwells))
+  # df <- make_empty_plate(n_rows_from_wells(nwells),
+                         # n_cols_from_wells(nwells))
+  df <- wellr::well_plate(
+    nrow = wellr:::n_rows_from_wells(nwells),
+    ncol = wellr:::n_cols_from_wells(nwells)
+  )
 
   lapply(seq(nframes), function(x) {
     df$value <- mat[x, ]

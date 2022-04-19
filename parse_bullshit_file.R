@@ -148,7 +148,7 @@ df %>% pull(col) %>% max
 #   ) %>%
 #   plot_wells(id)
 
-df %>%
+decon_mat <- df %>%
   calc_bleed_df(
     time,
     value,
@@ -156,13 +156,51 @@ df %>%
     calibrate_row = wellr::well_to_rownum("I5"),
     calibrate_col = wellr::well_to_rownum("I5")
   ) %>%
-  make_decon_matrix(
+  df_to_matrix("ratio_mean") %>%
+  make_decon_matrix()
 
-  )
+
+df %>%
+  drop_na(value)
+
+df %>% pull(time) %>% unique() %>% length()
+  drop_na(value) %>%
+  frames_to_matrix(value, time)
+
+
+
+new_frames_to_matrix <- function(data, value, time) {
+  data <- data %>%
+    dplyr::arrange(row, col)
+
+  frames <- data %>%
+    dplyr::pull({{ time }}) %>%
+    unique()
+
+  purrr::map(frames, function(x) {
+    data %>%
+      dplyr::filter(
+        {{ time }} == x
+      ) %>%
+      dplyr::pull({{ value }})
+  }) %>%
+    purrr::reduce(rbind) %>%
+    as.matrix()
+}
+
+df %>%
+  new_frames_to_matrix(value, time)
+
+df %>%
+  frames_to_matrix(value, time) %>%
+  matrix_to_frames_df()
+  deconvolute_matrix_frames(decon_mat)
+
+
 
 
 reluxr::calc_matrix_D_best(
-  data = df,
+  data = drop_na(df, value),
   col_value = value,
   col_time = time,
   calibration_well = "I12",
