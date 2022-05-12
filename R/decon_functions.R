@@ -26,7 +26,7 @@ decon_col <- function(mat, rows, col = 12) {
 #' @export
 #'
 #' @examples
-make_decon_matrix <- function(mat#,
+make_decon_matrix <- function(mat#ˇ,
                               # sample_row = 8,
                               # sample_col = 12
                               ) {

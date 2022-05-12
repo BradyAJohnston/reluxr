@@ -131,8 +131,10 @@ calc_matrix_D_best <- function(data,
     adjusted_frames <- working_frames %>%
       deconvolute_matrix_frames(matrix_D_working)
 
+    plate_size <- dim(adjusted_frames)[2]
+
     adjusted_frames_sans <-
-      adjusted_frames[, -well_to_index(calibration_well)]
+      adjusted_frames[, -wellr::well_to_index(calibration_well, plate = plate_size)]
 
 
     compared_frames_sans <-
