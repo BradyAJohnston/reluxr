@@ -160,12 +160,12 @@ decon_mat <- df %>%
   make_decon_matrix()
 
 
-df %>%
-  drop_na(value)
-
-df %>% pull(time) %>% unique() %>% length()
-  drop_na(value) %>%
-  frames_to_matrix(value, time)
+# df %>%
+#   drop_na(value)
+#
+# df %>% pull(time) %>% unique() %>% length()
+#   drop_na(value) %>%
+  # frames_to_matrix(value, time)
 
 
 
@@ -199,7 +199,7 @@ df %>%
 
 
 
-reluxr::calc_matrix_D_best(
+mat_D_best <- calc_matrix_D_best(
   data = drop_na(df, value),
   col_value = value,
   col_time = time,
@@ -216,7 +216,7 @@ df %>%
   geom_line() +
   # geom_point() +
   scale_y_log10()# +
-  facet_wrap(~chunk)
+  # facet_wrap(~chunk)
 
 df %>%
   ggplot(aes(time, value, group = name)) +

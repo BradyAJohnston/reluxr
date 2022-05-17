@@ -133,12 +133,23 @@ calc_matrix_D_best <- function(data,
 
     plate_size <- dim(adjusted_frames)[2]
 
+
+    dis_from_well <- calc_dis_df(
+      data = wellr::well_plate(16, 24),
+      calibrate_row =  wellr::well_to_rownum(calibration_well),
+      calibrate_col =  wellr::well_to_colnum(calibration_well)
+      )
+
+    dis_from_well$ratio <- (1 - (dis_from_well$dis / max(dis_from_well$dis)) ^ (1/4)) + 1
+
+    well_factor <- dis_from_well$dis[-wellr::well_to_index(calibration_well, plate = plate_size)]
+
     adjusted_frames_sans <-
       adjusted_frames[, -wellr::well_to_index(calibration_well, plate = plate_size)]
 
 
     compared_frames_sans <-
-      adjusted_frames_sans - instrument_sensitivity < 0
+      adjusted_frames_sans - rep(instrument_sensitivity * well_factor, each = nrow(adjusted_frames_sans)) < 0
 
 
 
@@ -146,7 +157,7 @@ calc_matrix_D_best <- function(data,
       sum(compared_frames_sans) / max(nrow(compared_frames_sans)) / ncol(compared_frames_sans) * 100
 
 
-    if (perc_correct < 100) {
+    if (perc_correct < 99.8) {
       if (counter == 1) {
         # setup the progress bar for the optimsation iterations
         cli::cli_progress_bar(
