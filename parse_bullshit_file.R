@@ -188,13 +188,13 @@ new_frames_to_matrix <- function(data, value, time) {
     as.matrix()
 }
 
-df %>%
-  new_frames_to_matrix(value, time)
-
-df %>%
-  frames_to_matrix(value, time) %>%
-  matrix_to_frames_df()
-  deconvolute_matrix_frames(decon_mat)
+# df %>%
+#   new_frames_to_matrix(value, time)
+#
+# df %>%
+#   frames_to_matrix(value, time) %>%
+#   matrix_to_frames_df()
+#   deconvolute_matrix_frames(decon_mat)
 
 
 
@@ -208,7 +208,10 @@ mat_D_best <- calc_matrix_D_best(
   )
 
 
-
+lapply(seq(11), function(x) {
+  beepr::beep(x)
+  # Sys.sleep(2)
+})
 
 stop()
 df %>%
