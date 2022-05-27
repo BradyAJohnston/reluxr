@@ -68,12 +68,91 @@ read_plate <- function(csv, skip = 0) {
 }
 
 df <- read_plate(fl)
+# stop()
 
-df  |>
-  ggplot(aes(as.numeric(time) / 60 / 60, value, group = well)) +
-  geom_line(aes(colour = id)) +
-  # geom_point(aes(colour = id), alpha = 0.3) +
-  facet_grid(# cols = vars(id),
-    rows = vars(signal),
-    scales = "free") +
-  scale_y_log10()
+# df |>
+#   filter(value == max(value))
+
+mat <- df |>
+  filter(signal == "LUMI", time > 2.5 * 60 * 60) |>
+  wellr::well_df_to_mat_frames("value", "time")
+
+
+D_best <- rl_mat_decon_best(
+  mat = mat,
+  ref_row = wellr::well_to_rownum("I12"),
+  ref_col = wellr::well_to_colnum("I12"),
+  b_noise = 5
+)
+
+mat_whole <- df |>
+  filter(signal == "LUMI") |>
+  wellr::well_df_to_mat_frames("value", "time")
+
+
+mat_whole_dec <- mat_whole |>
+  rl_decon_frames(D_best)
+
+(
+  mat_whole
+  # mat_whole_dec
+  |> as_tibble()
+  |> mutate(frames = row_number())
+  |> pivot_longer(-frames)
+  # start the plot
+  |> ggplot(aes(frames, value, group = name))
+  + geom_line()
+  + scale_y_log10(limits = c(0.1, 1e5)) +
+    scale_x_continuous(labels = \(x) x * 15 / 60)
+) -> base_plot
+
+(
+  # mat_whole
+  mat_whole_dec
+  |> as_tibble()
+  |> mutate(frames = row_number())
+  |> pivot_longer(-frames)
+  # start the plot
+  |> ggplot(aes(frames, value, group = name))
+  + geom_line()
+  + scale_y_log10(limits = c(0.1, 1e5)) +
+    scale_x_continuous(labels = \(x) x * 15 / 60)
+) -> decon_plot
+
+
+patchwork::wrap_plots(base_plot, decon_plot)
+
+#
+#
+#
+#
+# fluor <- df |>
+#   filter(signal == "LUMI") |>
+#   mutate(
+#     well = wellr::well_format(well),
+#     row = wellr::well_to_rownum(well),
+#     col = wellr::well_to_colnum(well)
+#   )
+#
+# background <- fluor |>
+#   filter(wellr::well_to_colnum(well) == 1) |>
+#   summarise(
+#     mean = mean(value),
+#     sd = sd(value)
+#   )
+#
+# fluor |>
+#   filter(
+#     value == max(value)
+#   )
+#
+# calc_matrix_D_best(fluor, "time", "value", "I12", instrument_sensitivity = 3 * background$sd)
+#
+# df  |>
+#   ggplot(aes(as.numeric(time) / 60 / 60, value, group = well)) +
+#   geom_line(aes(colour = id)) +
+#   # geom_point(aes(colour = id), alpha = 0.3) +
+#   facet_grid(# cols = vars(id),
+#     rows = vars(signal),
+#     scales = "free") +
+#   scale_y_log10()

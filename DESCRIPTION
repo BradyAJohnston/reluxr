@@ -22,4 +22,5 @@ Imports:
     magrittr,
     dplyr,
     tidyr,
-    cli
+    cli,
+    wellr
