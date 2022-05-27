@@ -1,4 +1,5 @@
 library(tidyverse)
+library(wellr)
 
 
 fl <- "inst/Xfiles/tecan/calibration/calTecan1.xlsx"
@@ -41,7 +42,7 @@ rl_decon_frames(mat, D_best) |>
   geom_line() +
   scale_y_log10()
 
-library(wellr)
+
 target_wells <- c(well_join(1:8, 5), well_join(1:8, 7), well_join(c(2, 7), 6))
 
 fl <- "inst/Xfiles/tecan/tecanON1.xlsx"
