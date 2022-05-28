@@ -157,7 +157,7 @@ rl_mat_decon_best <-
            ref_col,
            b_noise = 20) {
     plate_size = ncol(mat)
-    ref_index <- wellr::well_to_index(wellr::well_join(ref_row, ref_col))
+    ref_index <- wellr::well_to_index(wellr::well_join(ref_row, ref_col), plate = plate_size)
 
     n_rows <- sqrt(ncol(mat) * 2 / 3)
     n_cols <- sqrt(ncol(mat) * 3 / 2)

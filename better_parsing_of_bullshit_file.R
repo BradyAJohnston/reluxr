@@ -82,7 +82,7 @@ D_best <- rl_mat_decon_best(
   mat = mat,
   ref_row = wellr::well_to_rownum("I12"),
   ref_col = wellr::well_to_colnum("I12"),
-  b_noise = 5
+  b_noise = 3
 )
 
 mat_whole <- df |>
@@ -92,6 +92,10 @@ mat_whole <- df |>
 
 mat_whole_dec <- mat_whole |>
   rl_decon_frames(D_best)
+
+D_best |>
+  log10() |>
+  image()
 
 (
   mat_whole
