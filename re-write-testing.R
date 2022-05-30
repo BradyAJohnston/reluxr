@@ -22,6 +22,20 @@ ref_well <- df1 |>
   filter(fluoro == max(fluoro)) |>
   pull(well)
 
+d_best <- df1 |>
+  filter(time_s > 2.5 * 60) |>
+  rl_df_decon_best("fluoro", "time_s", ref_well = "E05", b_noise = 10)
+
+
+
+df1 |>
+  rl_df_decon_frames("fluoro", "time_s", d_best)
+  pivot_longer(c(fluoro, val_decon)) |>
+  ggplot(aes(time_s, value)) +
+  geom_line(aes(group = well)) +
+  facet_wrap(~name) +
+  scale_y_log10()
+
 mat <- df1 |>
   wellr::well_df_to_mat_frames("fluoro", "time_s")
 

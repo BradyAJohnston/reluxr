@@ -243,3 +243,64 @@ rl_mat_decon_best <-
 
     return(mat_D_best)
   }
+
+
+#' Title
+#'
+#' @param data
+#' @param values_col
+#' @param time_col
+#' @param ref_well
+#' @param well_col
+#' @param b_noise
+#'
+#' @return
+#' @export
+#'
+#' @examples
+rl_df_decon_best <- function(data, values_col, time_col, ref_well = "I05", b_noise, well_col = "well") {
+  ref_row <- wellr::well_to_rownum(ref_well)
+  ref_col <- wellr::well_to_colnum(ref_well)
+
+  mat_frames <- wellr::well_df_to_mat_frames(
+    data = data,
+    values_col = rlang::as_string(values_col),
+    time_col   = rlang::as_string(time_col),
+    well_col   = rlang::as_string(well_col)
+)
+
+  rl_mat_decon_best(
+    mat_frames,
+    ref_row = ref_row,
+    ref_col = ref_col,
+    b_noise = b_noise
+  )
+}
+
+#' Title
+#'
+#' @param data
+#' @param col_value
+#' @param col_time
+#' @param mat_decon
+#'
+#' @importFrom rlang :=
+#' @return
+#' @export
+#'
+#' @examples
+rl_df_decon_frames <- function(data, col_value, col_time, mat_decon) {
+  mat_frames <- wellr::well_df_to_mat_frames(data, col_value, col_time)
+
+  mat_frames_deconvoluted <- rl_decon_frames(mat_frames, mat_decon)
+
+  data |>
+    # dplyr::arrange(
+    #   wellr::well_to_colnum(well),
+    #   wellr::well_to_rownum(well),
+    #   col_time
+    # ) |>
+    dplyr::mutate(
+      paste(col_value, "decon", sep = "_") := wellr::well_mat_frames_to_df(mat_frames_deconvoluted)$value
+    )
+}
