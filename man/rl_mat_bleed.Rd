@@ -10,9 +10,9 @@ rl_mat_bleed(mat, ref_row, ref_col, b_noise = 10, relative = TRUE, .f = mean)
 \item{mat}{A matrix to expand and calculate relative bleed-through based on a
 reference well.}
 
-\item{ref_row}{Reference row number.}
+\item{ref_row}{Reference well row number.}
 
-\item{ref_col}{Reference column number.}
+\item{ref_col}{Reference well column number.}
 
 \item{b_noise}{Calculated background noise to fill the bleed-through matrix.}
 
@@ -25,5 +25,6 @@ a matrix, that is a bleed-through matrix calculated from the given
 matrix.
 }
 \description{
-Calculate Bleed Through Matrix
+Expand and calculate a bleed-through matrix from the given matrix around the
+given reference well.
 }

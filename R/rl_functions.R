@@ -1,9 +1,12 @@
 #' Calculate Bleed Through Matrix
 #'
+#' Expand and calculate a bleed-through matrix from the given matrix around the
+#' given reference well.
+#'
 #' @param mat A matrix to expand and calculate relative bleed-through based on a
 #'   reference well.
-#' @param ref_row Reference row number.
-#' @param ref_col Reference column number.
+#' @param ref_row Reference well row number.
+#' @param ref_col Reference well column number.
 #' @param b_noise Calculated background noise to fill the bleed-through matrix.
 #' @param relative TRUE / FALSE whether to return relative values.
 #' @param .f Function to apply to the expanded matrix, defaults to mean.
@@ -85,7 +88,7 @@ rl_mat_bleed <- function(mat, ref_row, ref_col, b_noise = 10, relative = TRUE, .
 }
 
 
-#' Make Deconvolution Matrix From Bleed-Through
+#' Make Deconvolution Matrix From Bleed-Through Matrix
 #'
 #' @param mat Bleed-through matrix from `rl_mat_bleed()`
 #'
@@ -290,17 +293,14 @@ rl_df_decon_best <- function(data, values_col, time_col, ref_well = "I05", b_noi
 #'
 #' @examples
 rl_df_decon_frames <- function(data, col_value, col_time, mat_decon) {
+  data <- data[order(data[, col_time]) , ]
+  data <- wellr::well_reorder_df(data)
+
   mat_frames <- wellr::well_df_to_mat_frames(data, col_value, col_time)
 
   mat_frames_deconvoluted <- rl_decon_frames(mat_frames, mat_decon)
 
-  data |>
-    # dplyr::arrange(
-    #   wellr::well_to_colnum(well),
-    #   wellr::well_to_rownum(well),
-    #   col_time
-    # ) |>
-    dplyr::mutate(
-      paste(col_value, "decon", sep = "_") := wellr::well_mat_frames_to_df(mat_frames_deconvoluted)$value
-    )
+  data$value_decon <- c(t(mat_frames_deconvoluted))
+
+  data
 }

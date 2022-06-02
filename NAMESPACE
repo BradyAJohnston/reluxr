@@ -2,6 +2,9 @@
 
 export(rl_decon_frames)
 export(rl_decon_vec)
+export(rl_df_decon_best)
+export(rl_df_decon_frames)
 export(rl_mat_bleed)
 export(rl_mat_decon)
 export(rl_mat_decon_best)
+importFrom(rlang,":=")

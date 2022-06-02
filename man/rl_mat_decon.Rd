@@ -2,7 +2,7 @@
 % Please edit documentation in R/rl_functions.R
 \name{rl_mat_decon}
 \alias{rl_mat_decon}
-\title{Make Deconvolution Matrix From Bleed-Through}
+\title{Make Deconvolution Matrix From Bleed-Through Matrix}
 \usage{
 rl_mat_decon(mat)
 }
@@ -13,5 +13,5 @@ rl_mat_decon(mat)
 a matrix, ready for deconvolution.
 }
 \description{
-Make Deconvolution Matrix From Bleed-Through
+Make Deconvolution Matrix From Bleed-Through Matrix
 }

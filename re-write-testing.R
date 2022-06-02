@@ -26,18 +26,31 @@ d_best <- df1 |>
   filter(time_s > 2.5 * 60) |>
   rl_df_decon_best("fluoro", "time_s", ref_well = "E05", b_noise = 10)
 
-
+d_best |>
+  log10() |>
+  image()
 
 df1 |>
-  rl_df_decon_frames("fluoro", "time_s", d_best)
-  pivot_longer(c(fluoro, val_decon)) |>
-  ggplot(aes(time_s, value)) +
-  geom_line(aes(group = well)) +
-  facet_wrap(~name) +
-  scale_y_log10()
+  rl_df_decon_frames("fluoro", "time_s", d_best) |>
+  wellr::well_df_to_mat_frames("value_decon", "time_s") |>
+  log10() |>
+  image()
+
+# df1 |>
+#   rl_df_decon_frames("fluoro", "time_s", d_best)
+#   pivot_longer(c(fluoro, val_decon)) |>
+#   ggplot(aes(time_s, value)) +
+#   geom_line(aes(group = well)) +
+#   facet_wrap(~name) +
+#   scale_y_log10()
 
 mat <- df1 |>
   wellr::well_df_to_mat_frames("fluoro", "time_s")
+
+
+rl_df_
+
+
 
 D_best <- rl_mat_decon_best(
   mat = mat,
@@ -89,3 +102,4 @@ df2 |>
   scale_x_continuous(expand = expansion()) +
   labs(colour = "Sample Well") +
   theme_light()
+
