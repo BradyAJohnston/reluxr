@@ -123,40 +123,17 @@ D_best |>
     scale_x_continuous(labels = \(x) x * 15 / 60)
 ) -> decon_plot
 
-
 patchwork::wrap_plots(base_plot, decon_plot)
 
-#
-#
-#
-#
-# fluor <- df |>
-#   filter(signal == "LUMI") |>
-#   mutate(
-#     well = wellr::well_format(well),
-#     row = wellr::well_to_rownum(well),
-#     col = wellr::well_to_colnum(well)
-#   )
-#
-# background <- fluor |>
-#   filter(wellr::well_to_colnum(well) == 1) |>
-#   summarise(
-#     mean = mean(value),
-#     sd = sd(value)
-#   )
-#
-# fluor |>
-#   filter(
-#     value == max(value)
-#   )
-#
-# calc_matrix_D_best(fluor, "time", "value", "I12", instrument_sensitivity = 3 * background$sd)
-#
-# df  |>
-#   ggplot(aes(as.numeric(time) / 60 / 60, value, group = well)) +
-#   geom_line(aes(colour = id)) +
-#   # geom_point(aes(colour = id), alpha = 0.3) +
-#   facet_grid(# cols = vars(id),
-#     rows = vars(signal),
-#     scales = "free") +
-#   scale_y_log10()
+
+df |>
+  filter(
+    signal == "LUMI"
+    ) |>
+  rl_df_decon_frames("value", "time", D_best) |>
+  pivot_longer(c(value, value_decon)) |>
+  ggplot(aes(time, value, group = interaction(well, name))) +
+  geom_line(alpha = 0.3) +
+  facet_wrap(~name) +
+  scale_y_log10(breaks = 10 ^ (-1:5))
+

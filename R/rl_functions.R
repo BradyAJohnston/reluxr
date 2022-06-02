@@ -13,9 +13,6 @@
 #'
 #' @return a matrix, that is a bleed-through matrix calculated from the given
 #'   matrix.
-#' @export
-#'
-#' @examples
 rl_mat_bleed <- function(mat, ref_row, ref_col, b_noise = 10, relative = TRUE, .f = mean) {
 
   # calculate the dimensions of the bleed-through matrix
@@ -93,9 +90,6 @@ rl_mat_bleed <- function(mat, ref_row, ref_col, b_noise = 10, relative = TRUE, .
 #' @param mat Bleed-through matrix from `rl_mat_bleed()`
 #'
 #' @return a matrix, ready for deconvolution.
-#' @export
-#'
-#' @examples
 rl_mat_decon <- function(mat) {
   ref_row <- (nrow(mat) + 1) / 2
   ref_col <- (ncol(mat) + 1) / 2
@@ -120,9 +114,6 @@ rl_mat_decon <- function(mat) {
 #' @param decon_mat Deconvolution matrix created through `rl_mat_decon()`.
 #'
 #' @return a numeric vector, the same length as `vec`.
-#' @export
-#'
-#' @examples
 rl_decon_vec <- function(vec, decon_mat) {
   solve(decon_mat) %*% vec
 }
@@ -134,9 +125,6 @@ rl_decon_vec <- function(vec, decon_mat) {
 #' @param decon_mat A deconvolution matrix created through `rl_mat_decon()`.
 #'
 #' @return A deconvoluted multi-frame matrix.
-#' @export
-#'
-#' @examples
 rl_decon_frames <- function(mat_frames, decon_mat) {
   frames <- t(apply(mat_frames, 1, rl_decon_vec, decon_mat = decon_mat))
   colnames(frames) <- colnames(mat_frames)
@@ -151,9 +139,6 @@ rl_decon_frames <- function(mat_frames, decon_mat) {
 #' @param b_noise Value for the background noise.
 #'
 #' @return a matrix, the optimised deconvolution matrix.
-#' @export
-#'
-#' @examples
 rl_mat_decon_best <-
   function(mat,
            ref_row,
@@ -248,27 +233,38 @@ rl_mat_decon_best <-
   }
 
 
-#' Title
+#' Calculate a Deconvolution Matrix
 #'
-#' @param data
-#' @param values_col
-#' @param time_col
-#' @param ref_well
-#' @param well_col
-#' @param b_noise
+#' Use the data from a calibration plate, where the plate is empty except for
+#' a single well with a luminescent signal, to create a deconvolution matrix
+#' that can be used to adjust other experimental results.
 #'
-#' @return
+#' The deconvolution matrix will be unique for each plate type and plate-reader,
+#' so a matrix should be calculated for each combination of plate and plate
+#' reader, but once this is calculated, it can be re-used to adjust future
+#' experimental results.
+#'
+#' @param data A data frame that contains the data of the calibration plate.
+#' @param col_value The name of the column containing the values (i.e. 'lum').
+#' @param col_time The name of the column containing the time values (i.e.
+#'   'time')
+#' @param ref_well The well ID of the reference well (i.e. 'E05', 'I12")
+#' @param well_col The name of the column containing well IDs (i.e. 'well')
+#' @param b_noise The value of the background noise, which is the average signal
+#'   for the background wells that are far away from the reference well.
+#'
+#' @return a deconvolution matrix, for use in `rl_adjust_plate()`
 #' @export
 #'
 #' @examples
-rl_df_decon_best <- function(data, values_col, time_col, ref_well = "I05", b_noise, well_col = "well") {
+rl_calc_decon_matrix <- function(data, col_value, col_time, ref_well = "I05", b_noise, well_col = "well") {
   ref_row <- wellr::well_to_rownum(ref_well)
   ref_col <- wellr::well_to_colnum(ref_well)
 
   mat_frames <- wellr::well_df_to_mat_frames(
     data = data,
-    values_col = rlang::as_string(values_col),
-    time_col   = rlang::as_string(time_col),
+    col_value = rlang::as_string(col_value),
+    col_time   = rlang::as_string(col_time),
     well_col   = rlang::as_string(well_col)
 )
 
@@ -280,19 +276,24 @@ rl_df_decon_best <- function(data, values_col, time_col, ref_well = "I05", b_noi
   )
 }
 
-#' Title
+#' Adjust Experimental Luminescent Data
 #'
-#' @param data
-#' @param col_value
-#' @param col_time
-#' @param mat_decon
+#' Using a deconvolution matrix, created through `rl_calc_decon_matrix()`,
+#' adjust the values in the `col_value` column to take into account
+#' bleed-through from surrounding wells.
 #'
-#' @importFrom rlang :=
+#' @param data A data frame that contains the experimental data.
+#' @param col_value The name of the column containing the values (i.e. 'lum').
+#' @param col_time The name of the column containing the time values (i.e.
+#'   'time')
+#' @param mat_decon A deconvolution matrix created through
+#'   `rl_calc_decon_matrix()`
+#'
 #' @return
 #' @export
 #'
 #' @examples
-rl_df_decon_frames <- function(data, col_value, col_time, mat_decon) {
+rl_adjust_plate <- function(data, col_value, col_time, mat_decon) {
   data <- data[order(data[, col_time]) , ]
   data <- wellr::well_reorder_df(data)
 
