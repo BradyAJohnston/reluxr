@@ -81,7 +81,6 @@ rl_mat_bleed <- function(mat, ref_row, ref_col, b_noise = 10, relative = TRUE, .
 
   # returned the extended bleed-through matrix
   mat_expanded
-
 }
 
 
@@ -96,7 +95,8 @@ rl_mat_decon <- function(mat) {
 
   toe_col <- function(mat, rows) {
     res_list <- lapply(rows, function(x) {
-      toeplitz(mat[x, seq(ref_col, ncol(mat)) ])})
+      toeplitz(mat[x, seq(ref_col, ncol(mat))])
+    })
     do.call(rbind, res_list)
   }
 
@@ -105,7 +105,6 @@ rl_mat_decon <- function(mat) {
   })
 
   do.call(cbind, toe_mat)
-
 }
 
 #' Deconvolute a Single Vector
@@ -144,7 +143,7 @@ rl_mat_decon_best <-
            ref_row,
            ref_col,
            b_noise = 20) {
-    plate_size = ncol(mat)
+    plate_size <- ncol(mat)
     ref_index <- wellr::well_to_index(wellr::well_join(ref_row, ref_col), plate = plate_size)
 
     n_rows <- sqrt(ncol(mat) * 2 / 3)
@@ -214,7 +213,6 @@ rl_mat_decon_best <-
 
             update_counter <- 0
             old_perc_correct <- perc_correct
-
           }
         }
       } else {
@@ -224,7 +222,6 @@ rl_mat_decon_best <-
         status = scales::percent(old_perc_correct / 100, accuracy = 0.01),
         inc = 1
       )
-
     }
     cli::cli_progress_update(status = scales::percent(1), inc = 1)
     cli::cli_progress_done()
@@ -264,9 +261,9 @@ rl_calc_decon_matrix <- function(data, col_value, col_time, ref_well = "I05", b_
   mat_frames <- wellr::well_df_to_mat_frames(
     data = data,
     col_value = rlang::as_string(col_value),
-    col_time   = rlang::as_string(col_time),
-    well_col   = rlang::as_string(well_col)
-)
+    col_time = rlang::as_string(col_time),
+    well_col = rlang::as_string(well_col)
+  )
 
   rl_mat_decon_best(
     mat_frames,
@@ -294,7 +291,7 @@ rl_calc_decon_matrix <- function(data, col_value, col_time, ref_well = "I05", b_
 #'
 #' @examples
 rl_adjust_plate <- function(data, col_value, col_time, mat_decon) {
-  data <- data[order(data[, col_time]) , ]
+  data <- data[order(data[, col_time]), ]
   data <- wellr::well_reorder_df(data)
 
   mat_frames <- wellr::well_df_to_mat_frames(data, col_value, col_time)
