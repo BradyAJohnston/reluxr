@@ -81,8 +81,8 @@ rl_df_
 
 D_best <- rl_mat_decon_best(
   mat = mat,
-  ref_row = wellr::well_to_rownum(ref_well),
-  ref_col = wellr::well_to_colnum(ref_well),
+  ref_row = wellr::well_to_row_num(ref_well),
+  ref_col = wellr::well_to_col_num(ref_well),
   b_noise = 10
 )
 

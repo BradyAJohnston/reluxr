@@ -1,5 +1,6 @@
 ---
 output: github_document
+bibliography: references.bib
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -16,19 +17,22 @@ knitr::opts_chunk$set(
 # reluxr
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/BradyAJohnston/reluxr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/BradyAJohnston/reluxr/actions/workflows/R-CMD-check.yaml)
-[![CRAN status](https://www.r-pkg.org/badges/version/reluxr)](https://CRAN.R-project.org/package=reluxr)
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+
+[![R-CMD-check](https://github.com/BradyAJohnston/reluxr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/BradyAJohnston/reluxr/actions/workflows/R-CMD-check.yaml) [![CRAN status](https://www.r-pkg.org/badges/version/reluxr)](https://CRAN.R-project.org/package=reluxr) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+
 <!-- badges: end -->
 
-The goal of reluxr is to ...
+The goal of reluxr is to enable deconvolution of luminescencent plate-based experiments. The implementation is based on the MatLab implementation from the paper titled '**Deconvolution of Luminescence Cross-Talk in High-Throughput Gene Expression Profiling'** [@mauri2019]
 
 ## Installation
 
 You can install the development version of reluxr from [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("devtools")
+if (!require(devtools)) install.packages("devtools")
+
+
+devtools::install_github("BradyAJohnston/wellr")
 devtools::install_github("BradyAJohnston/reluxr")
 ```
 
@@ -38,21 +42,105 @@ This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
 library(reluxr)
-## basic example code
+library(wellr)
+library(dplyr)
+
+fl <- system.file(
+   "extdata",
+   "calibrate_tecan",
+   "calTecan1.xlsx",
+   package = "reluxr"
+ )
+
+name_repair <- function(x) vctrs::vec_as_names(x, quiet = TRUE, repair = "unique")
+
+dat <- readxl::read_excel(
+  path = fl, 
+  skip = 43, 
+  col_names = FALSE,
+  .name_repair = name_repair
+  )
+
+dat |> 
+  dplyr::mutate(
+    group = cumsum(is.na(...3))
+  ) |> 
+  dplyr::group_by(group) |> 
+  dplyr::mutate(
+    ...1 = ...1[1]
+  ) |> 
+  dplyr::group_by(...1) |> 
+  tidyr::nest() |> 
+  dplyr::filter(!is.na(...1)) |> 
+  dplyr::filter(str_detect(...1, "LUM|OD600")) |> 
+  dplyr::mutate(
+    data = purrr::map(data, tidyr::drop_na), 
+    data = purrr::map(data, janitor::row_to_names, row_number = 1), 
+    data = purrr::map(data, dplyr::mutate, dplyr::across(-c(1:2), as.numeric)),
+    data = purrr::map(data, tidyr::pivot_longer,
+                      cols = -c(1:2),
+                      names_to = "well",
+                      names_transform = wellr::well_format
+                      )
+  ) |> 
+  tidyr::unnest(data) |> 
+  janitor::clean_names() |> 
+  dplyr::mutate(
+    channel = stringr::str_extract(x1, "[^:]+")
+  ) |> 
+  dplyr::filter(!stringr::str_detect(well, "NA")) -> dat
+
+
+
+
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+## Lets create a new one.
 
-```{r cars}
-summary(cars)
+```{r}
+
+  
+library(ggplot2)
+data <- dat |>
+  mutate(time_s = as.numeric(time_s)) |> 
+  filter(channel != "OD600")
+
+data |> dim()
+
+
+data |>
+  filter(channel != "OD600") |> 
+  filter(time_s > 500) |> 
+  # qplot(time_s, value, data = _) +
+  # scale_y_log10()
+  rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+
+data |>
+  group_by(well) |>
+  summarise(value = mean(value)) |>
+  mutate(row = well_to_row_num(well),
+         col = well_to_col_num(well)) |>
+  ggplot(aes(col, row, fill = log10(value))) +
+  geom_point(
+    aes(colour = log10(value)),
+    size = 18,
+    shape = 21,
+    colour = "black"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(
+    breaks = 1:12,
+    position = "top",
+    expand = expansion(0.1 * 2 / 3, 0.1 * 2 / 3)
+  ) +
+  scale_y_reverse(breaks = 1:8, expand = expansion(0.1, 0.1)) +
+  theme(aspect.ratio = 2 / 3) +
+  coord_cartesian(clip = "off") +
+  scale_fill_viridis_c() +
+  theme(
+    panel.background = element_rect(colour = "black"), 
+    panel.grid.minor = element_blank()
+    )
+
+
 ```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. You could also use GitHub Actions to re-render `README.Rmd` every time you push. An example workflow can be found here: <https://github.com/r-lib/actions/tree/v1/examples>.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.

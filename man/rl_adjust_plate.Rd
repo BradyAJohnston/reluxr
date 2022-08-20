@@ -17,9 +17,6 @@ rl_adjust_plate(data, col_value, col_time, mat_decon)
 \item{mat_decon}{A deconvolution matrix created through
 \code{rl_calc_decon_matrix()}}
 }
-\value{
-
-}
 \description{
 Using a deconvolution matrix, created through \code{rl_calc_decon_matrix()},
 adjust the values in the \code{col_value} column to take into account

@@ -80,8 +80,8 @@ mat <- df |>
 
 D_best <- rl_mat_decon_best(
   mat = mat,
-  ref_row = wellr::well_to_rownum("I12"),
-  ref_col = wellr::well_to_colnum("I12"),
+  ref_row = wellr::well_to_row_num("I12"),
+  ref_col = wellr::well_to_col_num("I12"),
   b_noise = 3
 )
 

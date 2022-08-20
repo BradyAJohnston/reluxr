@@ -95,8 +95,8 @@ df %>%
   filter(time == max(time, na.rm = TRUE)) %>%
   mutate(
     well = name,
-    row = wellr::well_to_rownum(well),
-    col = wellr::well_to_colnum(well)
+    row = wellr::well_to_row_num(well),
+    col = wellr::well_to_col_num(well)
   ) %>%
   reluxr::plot_wells(value) +
   facet_wrap(~chunk) +
@@ -113,8 +113,8 @@ df <- df %>%
     well = name
     ) %>%
   mutate(
-    row = wellr::well_to_rownum(well),
-    col = wellr::well_to_colnum(well),
+    row = wellr::well_to_row_num(well),
+    col = wellr::well_to_col_num(well),
     well = wellr::well_join(row, col)
   )
 
@@ -153,8 +153,8 @@ decon_mat <- df %>%
     time,
     value,
     time_cutoff = 2.5,
-    calibrate_row = wellr::well_to_rownum("I5"),
-    calibrate_col = wellr::well_to_rownum("I5")
+    calibrate_row = wellr::well_to_row_num("I5"),
+    calibrate_col = wellr::well_to_row_num("I5")
   ) %>%
   df_to_matrix("ratio_mean") %>%
   make_decon_matrix()
