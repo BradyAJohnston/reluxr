@@ -22,7 +22,8 @@ knitr::opts_chunk$set(
 
 <!-- badges: end -->
 
-The goal of reluxr is to enable deconvolution of luminescencent plate-based experiments. The implementation is based on the MatLab implementation from the paper titled '**Deconvolution of Luminescence Cross-Talk in High-Throughput Gene Expression Profiling'** [@mauri2019]
+The goal of reluxr is to enable deconvolution of luminescencent plate-based experiments.
+The implementation is based on the MatLab implementation from the paper titled '**Deconvolution of Luminescence Cross-Talk in High-Throughput Gene Expression Profiling'** [@mauri2019]
 
 ## Installation
 
@@ -72,7 +73,7 @@ dat |>
   dplyr::group_by(...1) |> 
   tidyr::nest() |> 
   dplyr::filter(!is.na(...1)) |> 
-  dplyr::filter(str_detect(...1, "LUM|OD600")) |> 
+  dplyr::filter(stringr::str_detect(...1, "LUM|OD600")) |> 
   dplyr::mutate(
     data = purrr::map(data, tidyr::drop_na), 
     data = purrr::map(data, janitor::row_to_names, row_number = 1), 
