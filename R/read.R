@@ -66,7 +66,7 @@ plate_read_tecan <- function(file, temp = FALSE) {
     tidyr::pivot_longer(
       cols = which(is_well_id(colnames(dat))),
       names_to = "well",
-      names_transform = wellr::well_format,
+      names_transform = well_format,
       values_transform = as.numeric,
     ) |>
     tidyr::drop_na(.data$value) |>

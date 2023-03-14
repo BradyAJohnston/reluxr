@@ -1,6 +1,6 @@
 ---
 output: github_document
-bibliography: references.bib
+bibliography: '`r system.file("REFERENCES.bib", package="reluxr")`'
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -22,21 +22,14 @@ knitr::opts_chunk$set(
 
 <!-- badges: end -->
 
-The goal of `{reluxr}` is to enable deconvolution of luminescencent plate-based
-experiments. The implementation is based on the MatLab implementation from the
-paper titled **1Deconvolution of Luminescence Cross-Talk in High-Throughput Gene
-Expression Profiling'**
+The goal of `{reluxr}` is to enable deconvolution of luminescencent plate-based experiments. The implementation is based on the MatLab implementation from the paper titled **1Deconvolution of Luminescence Cross-Talk in High-Throughput Gene Expression Profiling' @mauri2019**
 
 ## Installation
 
 You can install the development version of reluxr from [GitHub](https://github.com/) with:
 
 ``` r
-if (!require(devtools)) install.packages("devtools")
-
-
-devtools::install_github("BradyAJohnston/wellr")
-devtools::install_github("BradyAJohnston/reluxr")
+install.package("reluxr", repos = "https://bradyajohnston.r-universe.dev")
 ```
 
 ## Example
@@ -45,7 +38,6 @@ This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
 library(reluxr)
-library(wellr)
 library(dplyr)
 library(ggplot2)
 
@@ -64,19 +56,17 @@ dat <- plate_read_tecan(fl)
 
 dat
 
-mat_d <- dat |>
+mat_d_best <- dat |>
   filter(signal != "OD600") |> 
   filter(time_s > 500) |> 
   rl_calc_decon_matrix(value, time_s, ref_well = "E05", b_noise = 30)
 
-image(log10(mat_d))
+image(log10(mat_d_best))
 ```
-
 
 Plot the values.
 
 ```{r}
-
 rl_plot_time <- function(data, time, value, group = "well") {
   
   data <- dplyr::mutate(
@@ -100,16 +90,20 @@ rl_plot_time <- function(data, time, value, group = "well") {
   
   plt
 }
+```
 
-data |>
+```{r}
+dat |>
   ungroup() |> 
+  filter(signal == "LUMI") |> 
   rl_plot_time(time_s, value, well) + 
   labs(
     x = "Time (s)", 
     y = "LUM"
   )
-data |>
+dat |>
   ungroup() |> 
+  filter(signal == "LUMI") |> 
   rl_adjust_plate(value, mat_d_best, time = time_s) |>
   rl_plot_time(time_s, value, well) + 
   labs(
@@ -119,8 +113,6 @@ data |>
 
 
 ```
-
-
 
 ```{r}
 
@@ -156,4 +148,3 @@ dat |>
     limits = c(1, NA)
   )
 ```
-

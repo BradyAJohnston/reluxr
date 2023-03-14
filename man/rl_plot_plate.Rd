@@ -38,12 +38,12 @@ fl <- system.file(
 
 dat <- plate_read_tecan(fl)
 
-mat_d_best <- data |>
+mat_d_best <- dat |>
   dplyr::filter(signal == "LUMI") |>
   dplyr::filter(time_s > 500) |>
   rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
 
-data |>
+dat |>
   ungroup() |>
   dplyr::filter(signal == "LUMI") |>
   dplyr::filter(time_s > 500) |>

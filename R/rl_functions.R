@@ -51,7 +51,7 @@
     mat_dis <- outer(
       X = seq(n_row),
       Y = seq(n_col),
-      wellr::well_dis,
+      well_dis,
       ref_row = (n_row + 1) / 2,
       ref_col = (n_col + 1) / 2
     )
@@ -153,7 +153,7 @@ rl_mat_decon_best <-
            b_noise = 20) {
     plate_size <- ncol(mat)
     ref_index <-
-      wellr::well_to_index(wellr::well_join(ref_row, ref_col), plate = plate_size)
+      well_to_index(well_join(ref_row, ref_col), plate = plate_size)
 
     n_rows <- sqrt(ncol(mat) * 2 / 3)
     n_cols <- sqrt(ncol(mat) * 3 / 2)
@@ -258,8 +258,8 @@ rl_mat_decon_best <-
 df_arrange <- function(data, time = "time", well = "well") {
   wells <- dplyr::pull(data, well)
 
-  cols <- wellr::well_to_col_num(wells)
-  rows <- wellr::well_to_row_num(wells)
+  cols <- well_to_col_num(wells)
+  rows <- well_to_row_num(wells)
   frames <- dplyr::pull(data, {{ time }})
 
   dplyr::arrange(data, frames, rows, cols)
@@ -291,8 +291,8 @@ df_arrange <- function(data, time = "time", well = "well") {
   data <- df_arrange(data, {{ time }}, {{ well }})
   wells <- dplyr::pull(data, {{ well }})
 
-  cols <- wellr::well_to_col_num(wells)
-  rows <- wellr::well_to_row_num(wells)
+  cols <- well_to_col_num(wells)
+  rows <- well_to_row_num(wells)
   frames <- dplyr::pull(data, {{ time }})
 
   n_cols <- max(cols)
@@ -379,8 +379,8 @@ rl_calc_decon_matrix <-
            time = "time",
            ref_well = "I05",
            well = "well") {
-    ref_row <- wellr::well_to_row_num(ref_well)
-    ref_col <- wellr::well_to_col_num(ref_well)
+    ref_row <- well_to_row_num(ref_well)
+    ref_col <- well_to_col_num(ref_well)
 
     mat_frames <- .multi_frame_matrix_from_df(
       data = data,
@@ -389,12 +389,14 @@ rl_calc_decon_matrix <-
       well = {{ well }}
     )
 
-    rl_mat_decon_best(
+    mat_d_best <- rl_mat_decon_best(
       mat_frames,
       ref_row = ref_row,
       ref_col = ref_col,
       b_noise = b_noise
     )
+
+    mat_d_best
   }
 
 #' Adjust Experimental Luminescent Data
