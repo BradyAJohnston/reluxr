@@ -284,32 +284,31 @@ df_arrange <- function(data, time = "time", well = "well") {
 .multi_frame_matrix_from_df <-
   function(data,
            value,
-           time = 'time',
-           well = 'well',
+           time = "time",
+           well = "well",
            arrange = FALSE) {
+    data <- df_arrange(data, {{ time }}, {{ well }})
+    wells <- dplyr::pull(data, {{ well }})
 
-  data <- df_arrange(data, {{ time }}, {{ well }})
-  wells <- dplyr::pull(data, {{ well }})
+    cols <- well_to_col_num(wells)
+    rows <- well_to_row_num(wells)
+    frames <- dplyr::pull(data, {{ time }})
 
-  cols <- well_to_col_num(wells)
-  rows <- well_to_row_num(wells)
-  frames <- dplyr::pull(data, {{ time }})
+    n_cols <- max(cols)
+    n_rows <- max(rows)
 
-  n_cols <- max(cols)
-  n_rows <- max(rows)
+    mat <- matrix(
+      dplyr::pull(data, {{ value }}),
+      ncol = n_cols * n_rows,
+      nrow = length(unique(frames)),
+      byrow = TRUE
+    )
 
-  mat <- matrix(
-    dplyr::pull(data, {{ value }}),
-    ncol = n_cols * n_rows,
-    nrow = length(unique(frames)),
-    byrow = TRUE
-  )
+    rownames(mat) <- unique(frames)
+    colnames(mat) <- unique(wells)
 
-  rownames(mat) <- unique(frames)
-  colnames(mat) <- unique(wells)
-
-  mat
-}
+    mat
+  }
 
 #' Convert a Multi-Frame Matrix to a Vector
 #'
@@ -457,7 +456,8 @@ rl_adjust_plate <- function(data, value, mat_decon, time = "time", well = "well"
 
   mat_frames_deconvoluted <- .deconvolute_multi_frame_matrix(mat_frames, mat_decon)
 
-  data <- dplyr::mutate(data,
+  data <- dplyr::mutate(
+    data,
     {{ value }} := .multi_frame_matrix_to_vec(mat_frames_deconvoluted)
   )
 

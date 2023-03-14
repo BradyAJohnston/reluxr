@@ -150,11 +150,11 @@ well_format <- function(x, num_width = 2, uppercase = TRUE) {
 n_cols_from_wells <- function(x) {
   stopifnot(is.numeric(x))
   switch(as.character(x),
-         "6" = 3,
-         "12" = 4,
-         "24" = 6,
-         "96" = 12,
-         "384" = 24
+    "6" = 3,
+    "12" = 4,
+    "24" = 6,
+    "96" = 12,
+    "384" = 24
   )
 }
 
@@ -162,11 +162,11 @@ n_cols_from_wells <- function(x) {
 n_rows_from_wells <- function(x) {
   stopifnot(is.numeric(x))
   switch(as.character(x),
-         "6" = 2,
-         "12" = 3,
-         "24" = 4,
-         "96" = 8,
-         "384" = 16
+    "6" = 2,
+    "12" = 3,
+    "24" = 4,
+    "96" = 8,
+    "384" = 16
   )
 }
 
@@ -216,4 +216,3 @@ well_dis_plate <- function(ref_row, ref_col, plate = 96) {
     ref_col = ref_col
   )
 }
-

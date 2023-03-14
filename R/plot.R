@@ -40,9 +40,8 @@
 #'   scale_fill_viridis_c(
 #'     limits = c(1, NA)
 #'   )
-
+#'
 rl_plot_plate <- function(data, value, well = "well", trans = log10) {
-
   data <- dplyr::mutate(
     data,
     col = well_to_col_num(well),
@@ -70,9 +69,7 @@ rl_plot_plate <- function(data, value, well = "well", trans = log10) {
       labels = LETTERS[1:16],
       expand = ggplot2::expansion()
     ) +
-    ggplot2::scale_fill_viridis_c(
-
-    ) +
+    ggplot2::scale_fill_viridis_c() +
     ggplot2::coord_equal() +
     ggplot2::theme_minimal() +
     ggplot2::theme(
