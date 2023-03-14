@@ -42,7 +42,7 @@ devtools::install_github("BradyAJohnston/reluxr")
 This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
-library(reluxr)
+# library(reluxr)
 library(wellr)
 library(dplyr)
 
@@ -96,6 +96,26 @@ dat |>
 
 ```
 
+```{r}
+#| eval: false
+fl <- system.file(
+  "extdata",
+  "calibrate_tecan",
+  "calTecan1.xlsx",
+  package = "reluxr"
+)
+
+dat <- plate_read_tecan(fl)
+
+
+mat_d <- dat |>
+  filter(signal != "OD600") |> 
+  filter(time_s > 500) |> 
+  rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+
+```
+
+
 ## Lets create a new one.
 
 ```{r}
@@ -109,39 +129,63 @@ data <- dat |>
 data |> dim()
 
 
-data |>
+mat_d_best <- data |>
   filter(channel != "OD600") |> 
   filter(time_s > 500) |> 
-  # qplot(time_s, value, data = _) +
-  # scale_y_log10()
   rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
 
+
+
 data |>
-  group_by(well) |>
-  summarise(value = mean(value)) |>
-  mutate(row = well_to_row_num(well),
-         col = well_to_col_num(well)) |>
-  ggplot(aes(col, row, fill = log10(value))) +
-  geom_point(
-    aes(colour = log10(value)),
-    size = 18,
-    shape = 21,
-    colour = "black"
-  ) +
-  theme_minimal() +
-  scale_x_continuous(
-    breaks = 1:12,
-    position = "top",
-    expand = expansion(0.1 * 2 / 3, 0.1 * 2 / 3)
-  ) +
-  scale_y_reverse(breaks = 1:8, expand = expansion(0.1, 0.1)) +
-  theme(aspect.ratio = 2 / 3) +
-  coord_cartesian(clip = "off") +
-  scale_fill_viridis_c() +
-  theme(
-    panel.background = element_rect(colour = "black"), 
-    panel.grid.minor = element_blank()
-    )
+  ungroup() |> 
+  rl_adjust_plate(value, mat_d_best, time = time_s) |>
+  summarise(value = mean(value), .by = well) |> 
+  # mutate(value = if_else(value < 1, 1, value)) |> 
+  rl_plot_plate(value, trans = log10) + 
+  scale_fill_viridis_c(
+    limits = c(1, NA)
+  )
+
+
 
 
 ```
+
+```{r}
+
+rl_plot_time <- function(data, time, value, group = "well") {
+  
+  data <- dplyr::mutate(
+    data, 
+    time = {{ time }}, 
+    value = {{ value }}, 
+    group = {{ group }}
+  )
+  
+  plt <- ggplot2::ggplot(
+    data, 
+    mapping = ggplot2::aes(
+      x = time,
+      y = value, 
+      group = group
+    )
+  ) + 
+    ggplot2::geom_line() + 
+    ggplot2::scale_y_log10() + 
+    ggplot2::theme_bw()
+  
+  plt
+}
+
+data |>
+  ungroup() |> 
+  rl_adjust_plate(value, mat_d_best, time = time_s) |>
+  rl_plot_time(time_s, value, well) + 
+  labs(
+    x = "Time (s)", 
+    y = "LUM"
+  )
+
+
+```
+

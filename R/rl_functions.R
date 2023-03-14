@@ -13,7 +13,7 @@
 #'
 #' @return a matrix, that is a bleed-through matrix calculated from the given
 #'   matrix.
-rl_mat_bleed <-
+.mat_calc_bleed <-
   function(mat,
            ref_row,
            ref_col,
@@ -93,10 +93,10 @@ rl_mat_bleed <-
 
 #' Make Deconvolution Matrix From Bleed-Through Matrix
 #'
-#' @param mat Bleed-through matrix from `rl_mat_bleed()`
+#' @param mat Bleed-through matrix from `.mat_calc_bleed()`
 #'
 #' @return a matrix, ready for deconvolution.
-rl_mat_decon <- function(mat) {
+.mat_calc_deconvolution <- function(mat) {
   ref_row <- (nrow(mat) + 1) / 2
   ref_col <- (ncol(mat) + 1) / 2
 
@@ -117,23 +117,23 @@ rl_mat_decon <- function(mat) {
 #' Deconvolute a Single Vector
 #'
 #' @param vec Numeric vector, representing the wells.
-#' @param decon_mat Deconvolution matrix created through `rl_mat_decon()`.
+#' @param mat_decon Deconvolution matrix created through `.mat_calc_deconvolution()`.
 #'
 #' @return a numeric vector, the same length as `vec`.
-rl_decon_vec <- function(vec, decon_mat) {
-  solve(decon_mat) %*% vec
+.decon_vec <- function(vec, mat_decon) {
+  solve(mat_decon) %*% vec
 }
 
 #' Deconvolute a Multi-Frame Matrix
 #'
 #' @param mat_frames A multi-frame matrix, with each time point a row, and each
 #'   column a well.
-#' @param decon_mat A deconvolution matrix created through `rl_mat_decon()`.
+#' @param mat_decon A deconvolution matrix created through `.mat_calc_deconvolution()`.
 #'
 #' @return A deconvoluted multi-frame matrix.
-rl_decon_frames <- function(mat_frames, decon_mat) {
+.deconvolute_multi_frame_matrix <- function(mat_frames, mat_decon) {
   frames <-
-    t(apply(mat_frames, 1, rl_decon_vec, decon_mat = decon_mat))
+    t(apply(mat_frames, 1, .decon_vec, mat_decon = mat_decon))
   colnames(frames) <- colnames(mat_frames)
   frames
 }
@@ -177,7 +177,7 @@ rl_mat_decon_best <-
         byrow = TRUE
       )
 
-      mat_bleed_mean <- rl_mat_bleed(
+      mat_bleed_mean <- .mat_calc_bleed(
         mat = mat_mean,
         ref_row = ref_row,
         ref_col = ref_col,
@@ -186,7 +186,7 @@ rl_mat_decon_best <-
         .f = mean
       )
 
-      mat_bleed_sd <- rl_mat_bleed(
+      mat_bleed_sd <- .mat_calc_bleed(
         mat = mat_mean,
         ref_row = ref_row,
         ref_col = ref_col,
@@ -197,8 +197,8 @@ rl_mat_decon_best <-
 
       mat_mean_rand <-
         mat_bleed_mean + (update_counter / 50) * stats::rnorm(1, 0, 1) * mat_bleed_sd
-      mat_D_working <- rl_mat_decon(mat_mean_rand)
-      mat_adjusted <- rl_decon_frames(mat_working, mat_D_working)
+      mat_D_working <- .mat_calc_deconvolution(mat_mean_rand)
+      mat_adjusted <- .deconvolute_multi_frame_matrix(mat_working, mat_D_working)
       mat_compared <- mat_adjusted - b_noise * 3 < 0
 
       perc_correct <-
@@ -245,6 +245,83 @@ rl_mat_decon_best <-
     return(mat_D_best)
   }
 
+df_arrange <- function(data, time = "time", well = "well") {
+  wells <- dplyr::pull(data, well)
+
+  cols <- wellr::well_to_col_num(wells)
+  rows <- wellr::well_to_row_num(wells)
+  frames <- dplyr::pull(data, {{ time }})
+
+  dplyr::arrange(data, frames, rows, cols)
+}
+
+#' Create a multi-frame matrix from a dataframe.
+#'
+#' Creats a matrix with each row being a time point in a multi-frame experiment,
+#' and each column is a single well. The columns are concatenated by row
+#' (ordered A1, A2, ... B1, B2, ...).
+#'
+#' @param data A dataframe with columns for the value, time and well ID.
+#' @param value Name of the column which contains the values for the matrix.
+#' @param time Name of the column which defines the time points for the frames
+#'   (rows) of the matrix.
+#' @param well Name of the column which contains the well IDs of the samples.
+#' @param arrange Logical, whether to return a dataframe arranged by time and
+#'   well.
+#'
+#' @return a matrix, with
+
+.multi_frame_matrix_from_df <-
+  function(data,
+           value,
+           time = 'time',
+           well = 'well',
+           arrange = FALSE) {
+
+  wells <- dplyr::pull(data, well)
+
+  cols <- wellr::well_to_col_num(wells)
+  rows <- wellr::well_to_row_num(wells)
+  frames <- dplyr::pull(data, {{ time }})
+
+  if (arrange) {
+    data <- df_arrange(data, {{ time }}, {{ well }})
+  }
+
+  n_cols <- max(cols)
+  n_rows <- max(rows)
+
+  n_frames <- length(unique(dplyr::pull(data, {{ time }})))
+
+  mat <- matrix(
+    dplyr::pull(data, {{ value }}),
+    ncol = n_cols * n_rows,
+    nrow = n_frames,
+    byrow = TRUE
+  )
+
+  mat
+}
+
+#' Convert a Multi-Frame Matrix to a Vector
+#'
+#' Takes a multi-frame matrix and converts to a vector, with each frame being
+#' concatenated end-to-end. Each row / frame of the matrix is a time point, with
+#' each column representing a well (ordered A1, A2, ... B1, B2, ...).
+#'
+#' @param mat A multi-frame matrix.
+#' @param rowwise Logical, whether to concatenate the rows (default, TRUE) or
+#'   the columns.
+#'
+#' @return A vector, with values concatenated from the matrix.
+
+.multi_frame_matrix_to_vec <- function(mat, rowwise = TRUE) {
+  if (rowwise) {
+    c(t(mat))
+  } else {
+    c(mat)
+  }
+}
 
 #' Calculate a Deconvolution Matrix
 #'
@@ -272,19 +349,19 @@ rl_mat_decon_best <-
 #' @examples
 rl_calc_decon_matrix <-
   function(data,
-           col_value,
-           col_time,
-           ref_well = "I05",
+           value,
            b_noise,
-           well_col = "well") {
+           time = "time",
+           ref_well = "I05",
+           well = "well") {
     ref_row <- wellr::well_to_row_num(ref_well)
     ref_col <- wellr::well_to_col_num(ref_well)
 
-    mat_frames <- wellr::well_df_to_mat_frames(
+    mat_frames <- .multi_frame_matrix_from_df(
       data = data,
-      values_col = rlang::as_string(col_value),
-      time_col = rlang::as_string(col_time),
-      well_col = rlang::as_string(well_col)
+      value = {{ value }},
+      time = {{ time }},
+      well = {{ well }}
     )
 
     rl_mat_decon_best(
@@ -302,26 +379,28 @@ rl_calc_decon_matrix <-
 #' bleed-through from surrounding wells.
 #'
 #' @param data A data frame that contains the experimental data.
-#' @param col_value The name of the column containing the values (i.e. 'lum').
-#' @param col_time The name of the column containing the time values (i.e.
+#' @param value The name of the column containing the values (i.e. 'lum').
+#' @param time The name of the column containing the time values (i.e.
 #'   'time')
 #' @param mat_decon A deconvolution matrix created through
 #'   `rl_calc_decon_matrix()`
 #'
-#' @return
+#' @return A dataframe with the specified column having been deconvoluted, using
+#'   the supplied deconvolution matrix.
 #' @export
 #'
 #' @examples
-rl_adjust_plate <- function(data, col_value, col_time, mat_decon) {
-  data <- data[order(data[, col_time]), ]
-  data <- wellr::well_reorder_df(data)
+rl_adjust_plate <- function(data, value, mat_decon, time = "time", well = "well") {
+  data <- df_arrange(data, {{ time }}, {{ well }})
 
-  mat_frames <-
-    wellr::well_df_to_mat_frames(data, col_value, col_time)
+  mat_frames <- .multi_frame_matrix_from_df(data, {{ value }}, {{ time }})
 
-  mat_frames_deconvoluted <- rl_decon_frames(mat_frames, mat_decon)
+  mat_frames_deconvoluted <- .deconvolute_multi_frame_matrix(mat_frames, mat_decon)
 
-  data$value_decon <- c(t(mat_frames_deconvoluted))
+  data <- dplyr::mutate(
+    data,
+    {{ value }} := .multi_frame_matrix_to_vec(mat_frames_deconvoluted)
+  )
 
   data
 }

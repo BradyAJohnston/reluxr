@@ -6,25 +6,25 @@
 \usage{
 rl_calc_decon_matrix(
   data,
-  col_value,
-  col_time,
-  ref_well = "I05",
+  value,
   b_noise,
-  well_col = "well"
+  time = "time",
+  ref_well = "I05",
+  well = "well"
 )
 }
 \arguments{
 \item{data}{A data frame that contains the data of the calibration plate.}
 
+\item{b_noise}{The value of the background noise, which is the average signal
+for the background wells that are far away from the reference well.}
+
+\item{ref_well}{The well ID of the reference well (i.e. 'E05', 'I12")}
+
 \item{col_value}{The name of the column containing the values (i.e. 'lum').}
 
 \item{col_time}{The name of the column containing the time values (i.e.
 'time')}
-
-\item{ref_well}{The well ID of the reference well (i.e. 'E05', 'I12")}
-
-\item{b_noise}{The value of the background noise, which is the average signal
-for the background wells that are far away from the reference well.}
 
 \item{well_col}{The name of the column containing well IDs (i.e. 'well')}
 }
