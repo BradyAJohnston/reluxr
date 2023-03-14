@@ -25,27 +25,45 @@
     <loc>/index.html</loc>
   </url>
   <url>
+    <loc>/reference/df_arrange.html</loc>
+  </url>
+  <url>
+    <loc>/reference/dot-decon_vec.html</loc>
+  </url>
+  <url>
+    <loc>/reference/dot-deconvolute_multi_frame_matrix.html</loc>
+  </url>
+  <url>
+    <loc>/reference/dot-mat_calc_bleed.html</loc>
+  </url>
+  <url>
+    <loc>/reference/dot-mat_calc_deconvolution.html</loc>
+  </url>
+  <url>
+    <loc>/reference/dot-multi_frame_matrix_from_df.html</loc>
+  </url>
+  <url>
+    <loc>/reference/dot-multi_frame_matrix_to_vec.html</loc>
+  </url>
+  <url>
     <loc>/reference/index.html</loc>
   </url>
   <url>
-    <loc>/reference/rl_decon_frames.html</loc>
+    <loc>/reference/is_well_id.html</loc>
   </url>
   <url>
-    <loc>/reference/rl_decon_vec.html</loc>
+    <loc>/reference/plate_read_tecan.html</loc>
   </url>
   <url>
-    <loc>/reference/rl_df_decon_best.html</loc>
+    <loc>/reference/rl_adjust_plate.html</loc>
   </url>
   <url>
-    <loc>/reference/rl_df_decon_frames.html</loc>
-  </url>
-  <url>
-    <loc>/reference/rl_mat_bleed.html</loc>
-  </url>
-  <url>
-    <loc>/reference/rl_mat_decon.html</loc>
+    <loc>/reference/rl_calc_decon_matrix.html</loc>
   </url>
   <url>
     <loc>/reference/rl_mat_decon_best.html</loc>
+  </url>
+  <url>
+    <loc>/reference/rl_plot_plate.html</loc>
   </url>
 </urlset>
