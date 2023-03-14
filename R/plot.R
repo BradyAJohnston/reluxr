@@ -13,6 +13,34 @@
 #' @export
 #'
 #' @examples
+#' library(ggplot2)
+#' library(dplyr)
+#'
+#' fl <- system.file(
+#'   "extdata",
+#'   "calibrate_tecan",
+#'   "calTecan1.xlsx",
+#'   package = "reluxr"
+#' )
+#'
+#' dat <- plate_read_tecan(fl)
+#'
+#' mat_d_best <- data |>
+#'   dplyr::filter(signal == "LUMI") |>
+#'   dplyr::filter(time_s > 500) |>
+#'   rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+#'
+#' data |>
+#'   ungroup() |>
+#'   dplyr::filter(signal == "LUMI") |>
+#'   dplyr::filter(time_s > 500) |>
+#'   rl_adjust_plate(value, mat_d_best, time = time_s) |>
+#'   summarise(value = mean(value), .by = well) |>
+#'   rl_plot_plate(value, trans = log10) +
+#'   scale_fill_viridis_c(
+#'     limits = c(1, NA)
+#'   )
+
 rl_plot_plate <- function(data, value, well = "well", trans = log10) {
 
   data <- dplyr::mutate(

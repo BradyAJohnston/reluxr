@@ -245,6 +245,16 @@ rl_mat_decon_best <-
     return(mat_D_best)
   }
 
+#' Reorder a DatFrame
+#'
+#' Reorders a dataframe by the time points, then by the rows then by the
+#' columns.
+#'
+#' @param data A dataframe with a time column and a well column.
+#' @param time The name of the column with the time points.
+#' @param well The name of the column with the well ID information.
+#'
+#' @return The input dataframe reordered.
 df_arrange <- function(data, time = "time", well = "well") {
   wells <- dplyr::pull(data, well)
 
@@ -278,27 +288,25 @@ df_arrange <- function(data, time = "time", well = "well") {
            well = 'well',
            arrange = FALSE) {
 
-  wells <- dplyr::pull(data, well)
+  data <- df_arrange(data, {{ time }}, {{ well }})
+  wells <- dplyr::pull(data, {{ well }})
 
   cols <- wellr::well_to_col_num(wells)
   rows <- wellr::well_to_row_num(wells)
   frames <- dplyr::pull(data, {{ time }})
 
-  if (arrange) {
-    data <- df_arrange(data, {{ time }}, {{ well }})
-  }
-
   n_cols <- max(cols)
   n_rows <- max(rows)
-
-  n_frames <- length(unique(dplyr::pull(data, {{ time }})))
 
   mat <- matrix(
     dplyr::pull(data, {{ value }}),
     ncol = n_cols * n_rows,
-    nrow = n_frames,
+    nrow = length(unique(frames)),
     byrow = TRUE
   )
+
+  rownames(mat) <- unique(frames)
+  colnames(mat) <- unique(wells)
 
   mat
 }
@@ -335,18 +343,35 @@ df_arrange <- function(data, time = "time", well = "well") {
 #' experimental results.
 #'
 #' @param data A data frame that contains the data of the calibration plate.
-#' @param col_value The name of the column containing the values (i.e. 'lum').
-#' @param col_time The name of the column containing the time values (i.e.
-#'   'time')
 #' @param ref_well The well ID of the reference well (i.e. 'E05', 'I12")
-#' @param well_col The name of the column containing well IDs (i.e. 'well')
 #' @param b_noise The value of the background noise, which is the average signal
 #'   for the background wells that are far away from the reference well.
+#' @param value Name of the column containing the luminescent values.
+#' @param time Name of the column with the time values.
+#' @param well Name of the column with the well ID values.
 #'
 #' @return a deconvolution matrix, for use in `rl_adjust_plate()`
 #' @export
 #'
 #' @examples
+#'
+#' fl <- system.file(
+#'   "extdata",
+#'   "calibrate_tecan",
+#'   "calTecan1.xlsx",
+#'   package = "reluxr"
+#' )
+#'
+#' dat <- plate_read_tecan(fl)
+#'
+#' dat
+#'
+#' mat_d <- dat |>
+#'   dplyr::filter(signal != "OD600") |>
+#'   dplyr::filter(time_s > 500) |>
+#'   rl_calc_decon_matrix(value, time_s, ref_well = "E05", b_noise = 30)
+#'
+#' image(log10(mat_d))
 rl_calc_decon_matrix <-
   function(data,
            value,
@@ -384,12 +409,45 @@ rl_calc_decon_matrix <-
 #'   'time')
 #' @param mat_decon A deconvolution matrix created through
 #'   `rl_calc_decon_matrix()`
+#' @param well Name of the column with the well ID information.
+#'
+#' @importFrom rlang := .data
 #'
 #' @return A dataframe with the specified column having been deconvoluted, using
 #'   the supplied deconvolution matrix.
 #' @export
 #'
 #' @examples
+#'
+#' fl <- system.file(
+#'   "extdata",
+#'   "calibrate_tecan",
+#'   "calTecan1.xlsx",
+#'   package = "reluxr"
+#' )
+#'
+#' dat <- plate_read_tecan(fl)
+#'
+#' mat_d_best <- dat |>
+#'   dplyr::filter(signal != "OD600") |>
+#'   dplyr::filter(time_s > 500) |>
+#'   rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+#'
+#' dat |>
+#'   dplyr::summarise(value = mean(value), .by = well) |>
+#'   rl_plot_plate(value, trans = log10) +
+#'   ggplot2::scale_fill_viridis_c(
+#'     limits = c(1, NA)
+#'   )
+#'
+#' dat |>
+#'   dplyr::filter(signal == "LUMI") |>
+#'   rl_adjust_plate(value, mat_d_best, time = time_s) |>
+#'   dplyr::summarise(value = mean(value), .by = well) |>
+#'   rl_plot_plate(value, trans = log10) +
+#'   ggplot2::scale_fill_viridis_c(
+#'     limits = c(1, NA)
+#'   )
 rl_adjust_plate <- function(data, value, mat_decon, time = "time", well = "well") {
   data <- df_arrange(data, {{ time }}, {{ well }})
 
@@ -397,8 +455,7 @@ rl_adjust_plate <- function(data, value, mat_decon, time = "time", well = "well"
 
   mat_frames_deconvoluted <- .deconvolute_multi_frame_matrix(mat_frames, mat_decon)
 
-  data <- dplyr::mutate(
-    data,
+  data <- dplyr::mutate(data,
     {{ value }} := .multi_frame_matrix_to_vec(mat_frames_deconvoluted)
   )
 

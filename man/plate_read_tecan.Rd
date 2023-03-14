@@ -17,3 +17,15 @@ a \code{tibble::tibble()} of the values from the file.
 \description{
 Read the output of Tecan Plate Readers
 }
+\examples{
+fl <- system.file(
+  "extdata",
+  "calibrate_tecan",
+  "calTecan1.xlsx",
+  package = "reluxr"
+)
+
+dat <- plate_read_tecan(fl)
+
+dat
+}

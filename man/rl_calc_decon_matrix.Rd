@@ -16,17 +16,16 @@ rl_calc_decon_matrix(
 \arguments{
 \item{data}{A data frame that contains the data of the calibration plate.}
 
+\item{value}{Name of the column containing the luminescent values.}
+
 \item{b_noise}{The value of the background noise, which is the average signal
 for the background wells that are far away from the reference well.}
 
+\item{time}{Name of the column with the time values.}
+
 \item{ref_well}{The well ID of the reference well (i.e. 'E05', 'I12")}
 
-\item{col_value}{The name of the column containing the values (i.e. 'lum').}
-
-\item{col_time}{The name of the column containing the time values (i.e.
-'time')}
-
-\item{well_col}{The name of the column containing well IDs (i.e. 'well')}
+\item{well}{Name of the column with the well ID values.}
 }
 \value{
 a deconvolution matrix, for use in \code{rl_adjust_plate()}
@@ -41,4 +40,24 @@ The deconvolution matrix will be unique for each plate type and plate-reader,
 so a matrix should be calculated for each combination of plate and plate
 reader, but once this is calculated, it can be re-used to adjust future
 experimental results.
+}
+\examples{
+
+fl <- system.file(
+  "extdata",
+  "calibrate_tecan",
+  "calTecan1.xlsx",
+  package = "reluxr"
+)
+
+dat <- plate_read_tecan(fl)
+
+dat
+
+mat_d <- dat |>
+  dplyr::filter(signal != "OD600") |>
+  dplyr::filter(time_s > 500) |>
+  rl_calc_decon_matrix(value, time_s, ref_well = "E05", b_noise = 30)
+
+image(log10(mat_d))
 }

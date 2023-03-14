@@ -23,13 +23,26 @@ is_well_id <- function(x) {
 #'
 #' @return a `tibble::tibble()` of the values from the file.
 #' @export
+#' @importFrom rlang .data
 #'
 #' @examples
+#' fl <- system.file(
+#'   "extdata",
+#'   "calibrate_tecan",
+#'   "calTecan1.xlsx",
+#'   package = "reluxr"
+#' )
+#'
+#' dat <- plate_read_tecan(fl)
+#'
+#' dat
 plate_read_tecan <- function(file, temp = FALSE) {
-  dat <- suppressMessages({readxl::read_excel(file, col_names = FALSE, .name_repair = "unique")})
+  dat <- suppressMessages({
+    readxl::read_excel(file, col_names = FALSE, .name_repair = "unique")
+    })
   dat <- janitor::clean_names(dat)
 
-  vec <- stringr::str_detect(dplyr::pull(dat, x1), "Cycle Nr")
+  vec <- stringr::str_detect(dplyr::pull(dat, .data$x1), "Cycle Nr")
   vec <- dplyr::if_else(is.na(vec), FALSE, vec)
   vec <- cumsum(vec)
   vec <- c(vec[-1], max(vec))
@@ -38,16 +51,16 @@ plate_read_tecan <- function(file, temp = FALSE) {
     dplyr::mutate(
       chunk = vec,
     ) |>
-    tidyr::nest(.by = chunk) |>
-    dplyr::filter(chunk != 0) |>
+    tidyr::nest(.by = .data$chunk) |>
+    dplyr::filter(.data$chunk != 0) |>
     dplyr::mutate(
-      signal = purrr::map_chr(data, \(x) x[1, 1, drop = TRUE]),
-      data = purrr::map(data, dplyr::slice, -1),
-      data = purrr::map(data, janitor::row_to_names, row_number = 1)
+      signal = purrr::map_chr(.data$data, \(x) x[1, 1, drop = TRUE]),
+      data =   purrr::map(.data$data, dplyr::slice, -1),
+      data =   purrr::map(.data$data, janitor::row_to_names, row_number = 1)
     ) |>
-    tidyr::unnest(data) |>
+    tidyr::unnest(.data$data) |>
     janitor::clean_names() |>
-    tidyr::drop_na(cycle_nr)
+    tidyr::drop_na(.data$cycle_nr)
 
   dat <- dat |>
     tidyr::pivot_longer(
@@ -56,15 +69,16 @@ plate_read_tecan <- function(file, temp = FALSE) {
       names_transform = wellr::well_format,
       values_transform = as.numeric,
     ) |>
-    tidyr::drop_na(value) |>
+    tidyr::drop_na(.data$value) |>
     dplyr::select(-"chunk") |>
     dplyr::mutate(
       dplyr::across(
         dplyr::matches("cycle_nr|time_s|temp"),
         as.numeric
       ),
-      signal = stringr::str_extract(signal, ".+(?=:)")
-    )
+      signal = stringr::str_extract(.data$signal, ".+(?=:)")
+    ) |>
+    dplyr::ungroup()
 
   if (temp) {
     dat

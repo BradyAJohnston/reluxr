@@ -22,8 +22,10 @@ knitr::opts_chunk$set(
 
 <!-- badges: end -->
 
-The goal of reluxr is to enable deconvolution of luminescencent plate-based experiments.
-The implementation is based on the MatLab implementation from the paper titled '**Deconvolution of Luminescence Cross-Talk in High-Throughput Gene Expression Profiling'** [@mauri2019]
+The goal of `{reluxr}` is to enable deconvolution of luminescencent plate-based
+experiments. The implementation is based on the MatLab implementation from the
+paper titled **1Deconvolution of Luminescence Cross-Talk in High-Throughput Gene
+Expression Profiling'**
 
 ## Installation
 
@@ -42,9 +44,10 @@ devtools::install_github("BradyAJohnston/reluxr")
 This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
-# library(reluxr)
+library(reluxr)
 library(wellr)
 library(dplyr)
+library(ggplot2)
 
 fl <- system.file(
    "extdata",
@@ -52,104 +55,25 @@ fl <- system.file(
    "calTecan1.xlsx",
    package = "reluxr"
  )
-
-name_repair <- function(x) vctrs::vec_as_names(x, quiet = TRUE, repair = "unique")
-
-dat <- readxl::read_excel(
-  path = fl, 
-  skip = 43, 
-  col_names = FALSE,
-  .name_repair = name_repair
-  )
-
-dat |> 
-  dplyr::mutate(
-    group = cumsum(is.na(...3))
-  ) |> 
-  dplyr::group_by(group) |> 
-  dplyr::mutate(
-    ...1 = ...1[1]
-  ) |> 
-  dplyr::group_by(...1) |> 
-  tidyr::nest() |> 
-  dplyr::filter(!is.na(...1)) |> 
-  dplyr::filter(stringr::str_detect(...1, "LUM|OD600")) |> 
-  dplyr::mutate(
-    data = purrr::map(data, tidyr::drop_na), 
-    data = purrr::map(data, janitor::row_to_names, row_number = 1), 
-    data = purrr::map(data, dplyr::mutate, dplyr::across(-c(1:2), as.numeric)),
-    data = purrr::map(data, tidyr::pivot_longer,
-                      cols = -c(1:2),
-                      names_to = "well",
-                      names_transform = wellr::well_format
-                      )
-  ) |> 
-  tidyr::unnest(data) |> 
-  janitor::clean_names() |> 
-  dplyr::mutate(
-    channel = stringr::str_extract(x1, "[^:]+")
-  ) |> 
-  dplyr::filter(!stringr::str_detect(well, "NA")) -> dat
-
-
-
-
 ```
 
-```{r}
-#| eval: false
-fl <- system.file(
-  "extdata",
-  "calibrate_tecan",
-  "calTecan1.xlsx",
-  package = "reluxr"
-)
+## Create a Deconvolution Matrix
 
+```{r}
 dat <- plate_read_tecan(fl)
 
+dat
 
 mat_d <- dat |>
   filter(signal != "OD600") |> 
   filter(time_s > 500) |> 
-  rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+  rl_calc_decon_matrix(value, time_s, ref_well = "E05", b_noise = 30)
 
+image(log10(mat_d))
 ```
 
 
-## Lets create a new one.
-
-```{r}
-
-  
-library(ggplot2)
-data <- dat |>
-  mutate(time_s = as.numeric(time_s)) |> 
-  filter(channel != "OD600")
-
-data |> dim()
-
-
-mat_d_best <- data |>
-  filter(channel != "OD600") |> 
-  filter(time_s > 500) |> 
-  rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
-
-
-
-data |>
-  ungroup() |> 
-  rl_adjust_plate(value, mat_d_best, time = time_s) |>
-  summarise(value = mean(value), .by = well) |> 
-  # mutate(value = if_else(value < 1, 1, value)) |> 
-  rl_plot_plate(value, trans = log10) + 
-  scale_fill_viridis_c(
-    limits = c(1, NA)
-  )
-
-
-
-
-```
+Plot the values.
 
 ```{r}
 
@@ -179,6 +103,13 @@ rl_plot_time <- function(data, time, value, group = "well") {
 
 data |>
   ungroup() |> 
+  rl_plot_time(time_s, value, well) + 
+  labs(
+    x = "Time (s)", 
+    y = "LUM"
+  )
+data |>
+  ungroup() |> 
   rl_adjust_plate(value, mat_d_best, time = time_s) |>
   rl_plot_time(time_s, value, well) + 
   labs(
@@ -187,5 +118,42 @@ data |>
   )
 
 
+```
+
+
+
+```{r}
+
+fl <- system.file(
+  "extdata",
+  "calibrate_tecan",
+  "calTecan1.xlsx",
+  package = "reluxr"
+)
+
+dat <- plate_read_tecan(fl)
+
+mat_d_best <- dat |>
+  filter(signal != "OD600") |>
+  filter(time_s > 500) |>
+  rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+
+dat |>
+  ungroup() |>
+  summarise(value = mean(value), .by = well) |>
+  rl_plot_plate(value, trans = log10) +
+  scale_fill_viridis_c(
+    limits = c(1, NA)
+  )
+
+dat |>
+  ungroup() |>
+  filter(signal == "LUMI") |>
+  rl_adjust_plate(value, mat_d_best, time = time_s) |>
+  summarise(value = mean(value), .by = well) |>
+  rl_plot_plate(value, trans = log10) +
+  scale_fill_viridis_c(
+    limits = c(1, NA)
+  )
 ```
 

@@ -26,4 +26,6 @@ Imports:
     dplyr,
     tidyr,
     purrr,
-    janitor
+    janitor,
+    ggplot2,
+    stringr
