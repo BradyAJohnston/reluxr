@@ -1,14 +1,19 @@
 Package: reluxr
-Title: What the Package Does (One Line, Title Case)
+Title: Deconvolute Luminescence Readings on Bacterial Culture Plates
 Version: 0.1.0
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    person(given = "Brady",
+           family = "Johnston",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: MIT + file LICENSE
+           email = "brady.johnston@me.com",
+           comment = c(ORCID = "0000-0001-6301-2269"))
+Description: Implements the deconvolution algorithm developed in Mauri, 
+    Vecchione, and Fritz (2019) which enables deconvolution of luminscence 
+    readings for experimental culture plates. {reluxr} provides functions for 
+    calculating the 'best' deconvolution matrix from a calibration plate, and 
+    enables usage of this calibration matrix (or one calculated previously) to 
+    adjust experimental values from a plate reader.
+License: MIT
 Suggests: 
     covr,
     readxl,
@@ -30,3 +35,5 @@ Imports:
     janitor,
     ggplot2,
     stringr
+URL: https://github.com/bradyajohnston/reluxr
+BugReports: https://github.com/bradyajohnston/reluxr/issues
