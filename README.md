@@ -8,8 +8,10 @@
 [![R-CMD-check](https://github.com/BradyAJohnston/reluxr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/BradyAJohnston/reluxr/actions/workflows/R-CMD-check.yaml)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/reluxr)](https://CRAN.R-project.org/package=reluxr)
-[![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![reluxr status
+badge](https://bradyajohnston.r-universe.dev/badges/reluxr)](https://bradyajohnston.r-universe.dev)
+[![:name status
+badge](https://bradyajohnston.r-universe.dev/badges/:name)](https://bradyajohnston.r-universe.dev)
 
 <!-- badges: end -->
 
