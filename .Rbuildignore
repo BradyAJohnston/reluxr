@@ -1,3 +1,5 @@
+^renv$
+^renv\.lock$
 ^reluxr\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
@@ -5,3 +7,4 @@
 ^cran-comments\.md$
 ^\.github$
 ^codecov\.yml$
+^inst/testing$
