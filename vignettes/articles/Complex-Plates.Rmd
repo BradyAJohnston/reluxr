@@ -1,0 +1,93 @@
+---
+title: "Complex Plates"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(reluxr)
+```
+
+```{r}
+fl <- system.file("extdata",
+                  "calibrate_tecan",
+                  "calTecan1.xlsx",
+                  package = "reluxr")
+
+dat <- plate_read_tecan(fl)
+
+dat |> 
+  dplyr::filter(time_s > 500) |> 
+  dplyr::summarise(value = mean(value), .by = well) |> 
+  rl_plot_plate(value)
+
+mat_d <- dat |> 
+  dplyr::filter(time_s > 500) |> 
+  dplyr::filter(signal == "LUMI") |> 
+  rl_calc_decon_matrix(value, b_noise = 30, time = time_s, ref_well = "E5")
+```
+
+```{r}
+
+file_list <- list.files(
+  system.file("extdata", "Xfiles", "tecan", package = "reluxr"), 
+  full.names = TRUE
+)
+
+data_list <- purrr::map(file_list, plate_read_tecan, .progress = TRUE, )
+
+purrr::list_rbind(data_list, names_to = "id") |> 
+  dplyr::filter(signal == "LUMI") |> 
+  dplyr::mutate(id = id <= 3) |> 
+  dplyr::summarise(
+    time = mean(time_s), 
+    well = unique(well), 
+    sd = sd(value, na.rm = TRUE), 
+    value = mean(value), 
+    .by = c(time_s, well, id)
+  ) |> 
+  tidyr::nest(.by = id) |> 
+  dplyr::mutate(
+    data = purrr::map(data, rl_adjust_plate, value, mat_decon = mat_d)
+  ) |> 
+  tidyr::unnest(data) |> 
+  dplyr::filter(time > 500) |> 
+  dplyr::summarise(
+    value = mean(value), 
+    .by = c(well, id)
+  ) |> 
+  rl_plot_plate(value) + 
+  ggplot2::facet_wrap(~id) + 
+  ggplot2::scale_fill_viridis_c(
+    limits = c(2, NA), 
+    labels = scales::label_log()
+  ) + 
+  ggplot2::geom_label(
+    data = ~dplyr::filter(.x, log10(value) > 2),
+    ggplot2::aes(label = round(value / 1e3, 1)), 
+    fill = "gray10", 
+    colour = "gray90", 
+    alpha = 0.8
+  )
+
+plot_list <- purrr::map(data_list, \(x) {
+  x |> 
+    dplyr::filter(signal == "LUMI") |> 
+    rl_adjust_plate(value, time = time_s, mat_decon = mat_d) |> 
+    dplyr::filter(time_s > 500) |> 
+    rl_plot_plate(value) + 
+    ggplot2::scale_fill_viridis_c(
+      limits = c(2, NA)
+    )
+})
+
+patchwork::wrap_plots(plot_list)
+
+```
+
+
