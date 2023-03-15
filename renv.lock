@@ -947,26 +947,6 @@
         "tibble"
       ]
     },
-    "wellr": {
-      "Package": "wellr",
-      "Version": "0.1.0",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "wellr",
-      "RemoteUsername": "bradyajohnston",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "ee6e2c67dab3f203f8a0a24de9d84f4b7e28ccec",
-      "Hash": "e3e18b33e9466b16023b1d44022d1233",
-      "Requirements": [
-        "dplyr",
-        "magrittr",
-        "rlang",
-        "stringr",
-        "tibble",
-        "tidyr"
-      ]
-    },
     "withr": {
       "Package": "withr",
       "Version": "2.5.0",

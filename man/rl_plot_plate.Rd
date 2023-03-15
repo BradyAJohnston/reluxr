@@ -26,8 +26,6 @@ a \code{ggplot2::ggplot()} plot.
 Plot a Plate-Layout of the Value Column
 }
 \examples{
-library(ggplot2)
-library(dplyr)
 
 fl <- system.file(
   "extdata",
@@ -44,13 +42,13 @@ mat_d_best <- dat |>
   rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
 
 dat |>
-  ungroup() |>
   dplyr::filter(signal == "LUMI") |>
   dplyr::filter(time_s > 500) |>
   rl_adjust_plate(value, mat_d_best, time = time_s) |>
-  summarise(value = mean(value), .by = well) |>
+  dplyr::summarise(value = mean(value), .by = well) |>
   rl_plot_plate(value, trans = log10) +
-  scale_fill_viridis_c(
+  ggplot2::scale_fill_viridis_c(
     limits = c(1, NA)
   )
+
 }

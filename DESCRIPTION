@@ -13,7 +13,7 @@ Description: Implements the deconvolution algorithm developed in Mauri,
     calculating the 'best' deconvolution matrix from a calibration plate, and 
     enables usage of this calibration matrix (or one calculated previously) to 
     adjust experimental values from a plate reader.
-License: MIT
+License: MIT + file LICENSE
 Suggests: 
     covr,
     readxl,
