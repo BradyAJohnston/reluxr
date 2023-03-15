@@ -1,6 +1,6 @@
 Package: reluxr
 Title: Deconvolute Luminescence Readings on Bacterial Culture Plates
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: 
     person(given = "Brady",
            family = "Johnston",
