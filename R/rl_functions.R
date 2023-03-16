@@ -381,6 +381,8 @@ rl_calc_decon_matrix <-
     ref_row <- well_to_row_num(ref_well)
     ref_col <- well_to_col_num(ref_well)
 
+    .check_columns_exist(data, rlang::enquos(value, time, well))
+
     mat_frames <- .multi_frame_matrix_from_df(
       data = data,
       value = {{ value }},
@@ -432,7 +434,7 @@ rl_calc_decon_matrix <-
 #' mat_d_best <- dat |>
 #'   dplyr::filter(signal != "OD600") |>
 #'   dplyr::filter(time_s > 500) |>
-#'   rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+#'   rl_calc_decon_matrix(value, time_s, ref_well = "E05", b_noise = 30)
 #'
 #' dat |>
 #'   dplyr::summarise(value = mean(value), .by = well) |>
@@ -450,6 +452,8 @@ rl_calc_decon_matrix <-
 #'     limits = c(1, NA)
 #'   )
 rl_adjust_plate <- function(data, value, mat_decon, time = "time", well = "well") {
+  .check_columns_exist(data, rlang::enquos(value, time, well))
+
   data <- df_arrange(data, {{ time }}, {{ well }})
 
   mat_frames <- .multi_frame_matrix_from_df(data, {{ value }}, {{ time }})

@@ -42,7 +42,7 @@ dat <- plate_read_tecan(fl)
 mat_d_best <- dat |>
   dplyr::filter(signal != "OD600") |>
   dplyr::filter(time_s > 500) |>
-  rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+  rl_calc_decon_matrix(value, time_s, ref_well = "E05", b_noise = 30)
 
 dat |>
   dplyr::summarise(value = mean(value), .by = well) |>

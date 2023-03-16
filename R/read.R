@@ -51,16 +51,16 @@ plate_read_tecan <- function(file, temp = FALSE) {
     dplyr::mutate(
       chunk = vec,
     ) |>
-    tidyr::nest(.by = .data$chunk) |>
+    tidyr::nest(.by = "chunk") |>
     dplyr::filter(.data$chunk != 0) |>
     dplyr::mutate(
       signal = purrr::map_chr(.data$data, \(x) x[1, 1, drop = TRUE]),
       data = purrr::map(.data$data, dplyr::slice, -1),
       data = purrr::map(.data$data, janitor::row_to_names, row_number = 1)
     ) |>
-    tidyr::unnest(.data$data) |>
+    tidyr::unnest("data") |>
     janitor::clean_names() |>
-    tidyr::drop_na(.data$cycle_nr)
+    tidyr::drop_na("cycle_nr")
 
   dat <- dat |>
     tidyr::pivot_longer(
@@ -69,7 +69,7 @@ plate_read_tecan <- function(file, temp = FALSE) {
       names_transform = well_format,
       values_transform = as.numeric,
     ) |>
-    tidyr::drop_na(.data$value) |>
+    tidyr::drop_na("value") |>
     dplyr::select(-"chunk") |>
     dplyr::mutate(
       dplyr::across(
