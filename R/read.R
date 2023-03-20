@@ -78,12 +78,16 @@ plate_read_tecan <- function(file, temp = FALSE) {
       ),
       signal = stringr::str_extract(.data$signal, ".+(?=:)")
     ) |>
-    dplyr::ungroup()
+    dplyr::select(-dplyr::matches("temp")) |>
+    dplyr::ungroup() |>
+    dplyr::select(-dplyr::matches("time_s")) |>
+    tidyr::pivot_wider(
+      values_from = .data$value,
+      names_from = .data$signal,
+      id_cols = c(.data$cycle_nr, .data$well)
+    ) |>
+    janitor::clean_names() |>
+    dplyr::rename(time = .data$cycle_nr)
 
-  if (temp) {
-    dat
-  } else {
-    dat <- dplyr::select(dat, -dplyr::matches("temp"))
-    dat
-  }
+  dat
 }

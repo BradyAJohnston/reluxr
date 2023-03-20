@@ -23,34 +23,42 @@
 #'
 #' dat <- plate_read_tecan(fl)
 #'
-#' mat_d_best <- dat |>
-#'   dplyr::filter(signal == "LUMI") |>
-#'   dplyr::filter(time_s > 500) |>
-#'   rl_calc_decon_matrix("value", "time_s", ref_well = "E05", b_noise = 30)
+#' mat_d_best <-
+#'   rl_calc_decon_matrix(lumi, time, ref_well = "E05", b_noise = 30)
 #'
 #' dat |>
-#'   dplyr::filter(signal == "LUMI") |>
-#'   dplyr::filter(time_s > 500) |>
-#'   rl_adjust_plate(value, mat_d_best, time = time_s) |>
-#'   dplyr::summarise(value = mean(value), .by = well) |>
+#'   dplyr::filter(time > 30) |>
+#'   rl_adjust_plate(value, mat_d_best) |>
 #'   rl_plot_plate(value, trans = log10) +
 #'   ggplot2::scale_fill_viridis_c(
 #'     limits = c(1, NA)
 #'   )
 #'
-rl_plot_plate <- function(data, value, well = "well", trans = log10) {
+rl_plot_plate <- function(data, value, well = "well", trans = "log10") {
+  .check_columns_exist(data, rlang::enquos(value, well))
+
   data <- dplyr::mutate(
     data,
-    col = well_to_col_num(well),
-    row = well_to_row_num(well)
+    group = dplyr::pull(data, {{ well }})
   )
 
+  data <- dplyr::summarise(
+    dplyr::group_by(data, group),
+    value = mean({{ value }}, na.rm = TRUE)
+  )
+
+  data <- dplyr::mutate(
+    data,
+    col = well_to_col_num(group),
+    row = well_to_row_num(group)
+  )
+print(data)
   plt <- ggplot2::ggplot(
     data,
     mapping = ggplot2::aes(
       x = col,
       y = row,
-      fill = trans({{ value }})
+      fill = value
     )
   ) +
     ggplot2::geom_tile(
@@ -76,6 +84,50 @@ rl_plot_plate <- function(data, value, well = "well", trans = log10) {
         fill = "transparent"
       )
     )
+
+
+  if (trans == "log10") {
+    plt +
+      ggplot2::scale_fill_viridis_c(
+        trans = "log10"
+      )
+  } else {
+    plt
+  }
+}
+
+#' Plot Plate Readings Over Time
+#'
+#' @param data
+#' @param time
+#' @param value
+#' @param group
+#'
+#' @return
+#' @export
+#'
+#' @examples
+rl_plot_time <- function(data, value, time = "time", group = "well") {
+  .check_columns_exist(data, rlang::enquos(time, value, group))
+
+  data <- dplyr::select(
+    data,
+    time = {{ time }},
+    value = {{ value }},
+    group = {{ group }}
+  )
+
+  plt <- ggplot2::ggplot(
+    data,
+    mapping = ggplot2::aes(
+      x = .data$time,
+      y = .data$value,
+      group = .data$group
+    )
+  ) +
+    ggplot2::geom_line() +
+    ggplot2::scale_y_log10() +
+    ggplot2::theme_bw()
 
   plt
 }

@@ -68,15 +68,25 @@ Regardless of how you read in the required data, it needs to be (and should be r
 
 To have a look at the final data, we can plot the plate based on log-transformed luminescence values. We can see the very bright single well than contains the bacteria, and the bleed-through signal that is around it.
 
+### Required Columns
+To create a deconvolution matrix, you need a column with that contains time, a column that contains the luminescence readings, anda a column that contains plate IDs ("A1", "C10" etc).
+
+If we look at the data, we can see that the growth starts after time point 25 and reaches steady growth around 30. We will be using from 30 onwards for calculating the deconvolution matrix, as this will help with signal to noise ratios.
+
 ```{r}
-dat_fil <- dat |> 
-  dplyr::filter(signal == "LUMI", time_s > 500)
+
+dat |> 
+  rl_plot_time(lumi) + 
+  ggplot2::geom_vline(xintercept = 30, colour = "tomato", linetype = "dashed")
+
+dat_fil <- dplyr::filter(dat, time >= 30)
+  
+```
 
 
+```{r}
 dat_fil |> 
-  dplyr::group_by(well) |> 
-  dplyr::summarise(value = mean(value)) |> 
-  rl_plot_plate(value)
+  rl_plot_plate(lumi)
 
 ```
 
@@ -87,9 +97,9 @@ We can also quickly look at the resulting deconvolution matrix (`mat_d_best`) it
 ```{r}
 mat_d_best <- rl_calc_decon_matrix(
   data = dat_fil,
-  value = value,
-  time = time_s,
-  ref_well = "E05",
+  value = lumi,
+  time = time,
+  ref_well = "E5",
   b_noise = 20
 )
 
@@ -105,73 +115,27 @@ We do so using the `rl_adjust_plate()` funciton, which takes a dataframe, the na
 The returned dataframe will have the value column adjusted and deconvoluted using the deconvolution matrix supplied.
 
 In the examples below we first plot all of the values without deconvolution, then apply the deconvolution matrix and plot the values again.
-```{r}
-#| code-fold: true
-rl_plot_time <- function(data, time, value, group = "well") {
-  
-  data <- dplyr::mutate(
-    data, 
-    time = {{ time }}, 
-    value = {{ value }}, 
-    group = {{ group }}
-  )
-  
-  plt <- ggplot2::ggplot(
-    data, 
-    mapping = ggplot2::aes(
-      x = time,
-      y = value, 
-      group = group
-    )
-  ) + 
-    ggplot2::geom_line() + 
-    ggplot2::scale_y_log10() + 
-    ggplot2::theme_bw()
-  
-  plt
-}
-```
+
 
 
 #### Raw Values
 ```{r}
 dat |>
-  dplyr::filter(signal == "LUMI") |> 
-  rl_plot_time(time_s, value, well) + 
-  ggplot2::labs(
-    x = "Time (s)", 
-    y = "LUM"
-  )
+  rl_plot_time(lumi)
 ```
 
 #### Deconvoluted Values
 ```{r}
 dat |>
-  dplyr::filter(signal == "LUMI") |> 
   
-  rl_adjust_plate(value, mat_d_best, time = time_s) |> # deconvolute the values
-  
-  rl_plot_time(time_s, value, well) + 
-  ggplot2::labs(
-    x = "Time (s)", 
-    y = "LUM"
-  )
-
-
+  rl_adjust_plate(lumi, mat_d_best) |> # deconvolute the values
+  rl_plot_time(lumi)
 ```
 
 We can also replot the plate from earlier, with the newly deconvoluted values.
 
 ```{r}
-
 dat_fil |> 
-  rl_adjust_plate(value, mat_d_best, time = time_s) |> # deconvolute the values
-  dplyr::group_by(well) |> 
-  dplyr::summarise(value = mean(value)) |> 
-  rl_plot_plate(value) + 
-  ggplot2::scale_fill_viridis_c(
-    "log10(LUMI)",
-    breaks = 1:5, 
-    limits = c(1, NA)
-  )
+  rl_adjust_plate(lumi, mat_d_best) |> # deconvolute the values
+  rl_plot_plate(lumi)
 ```
